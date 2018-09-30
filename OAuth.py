@@ -15,7 +15,7 @@ token = None
 @app.route("/")
 def demo():
     global state
-    scope = ["chat:chat", "chat:connect"]
+    scope = ["chat:chat", "chat:connect", "chat:bypass_slowchat"]
     mixer = OAuth2Session(config["client_id"], redirect_uri='https://localhost:5555/callback', scope=scope)
     auth_url, state = mixer.authorization_url(authorization_base_url)
     return redirect(auth_url)

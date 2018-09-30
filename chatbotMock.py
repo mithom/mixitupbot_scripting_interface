@@ -3,7 +3,6 @@ import importlib
 import sys
 import os
 import time
-from mxpy import MixerChat
 
 
 # noinspection PyPep8Naming,PyUnusedLocal
@@ -12,10 +11,11 @@ class Parent(object):
     stop = False
     cooldowns = {}
     user_cooldowns = {}
+    MixerChat = None
 
     @classmethod
     def SendStreamMessage(cls, msg):
-        print "msg to stream: " + msg
+        cls.MixerChat.send_msg(msg)
         cls.stop = True
 
     @classmethod
@@ -24,7 +24,7 @@ class Parent(object):
 
     @classmethod
     def RemovePoints(cls, user_id, username, amount):
-        return random.choice([True, False])
+        return True
 
     @classmethod
     def AddPoints(cls, user_id, username, amount):
@@ -36,7 +36,7 @@ class Parent(object):
 
     @classmethod
     def IsLive(cls):
-        return MixerChat.mixerApi.get_channel_online()
+        return cls.MixerChat.mixerApi.get_channel_online()
 
     @classmethod
     def GetDisplayName(cls, user_id):
@@ -44,7 +44,7 @@ class Parent(object):
 
     @classmethod
     def GetDisplayNames(cls, user_names):
-        return [viewer_list[username] for username in user_names]
+        return [cls.viewer_list[username] for username in user_names]
 
     @classmethod
     def GetActiveUsers(cls):
@@ -81,6 +81,8 @@ class Parent(object):
 
     @classmethod
     def AddUserCooldown(cls, scriptname, commandname, user, seconds):
+        if scriptname + commandname not in cls.user_cooldowns:
+            cls.user_cooldowns[scriptname + commandname] = {}
         cls.user_cooldowns[scriptname + commandname][user] = time.time() + seconds
 
     @classmethod

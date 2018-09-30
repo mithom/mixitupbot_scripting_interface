@@ -21,9 +21,7 @@ script_path = os.path.join(file_path, 'scripts')
 def init(config):
     OAuth.config = config
     db.create_table_if_not_exists()
-    print "start"
     OAuth.start()
-    print "done"
     url = "https://127.0.0.1:5555/"
     webbrowser.open(url, new=1, autoraise=True)
     return OAuth.stop()
@@ -132,7 +130,6 @@ class MixerChat(object):
 
     @classmethod
     def start(cls):
-        print("started")
         cls.mixer.run_forever()
         print('never reach this')
 
@@ -147,14 +144,17 @@ class MixerChat(object):
         return {"type": "method", "method": method, "arguments": args, "id": id_}
 
     @classmethod
-    def send_msg(cls, mixer, message, sp=None):  # Send a chat message (if s is true, the message will append /me)
-        if sp:
+    def send_msg(cls, message):  # Send a chat message (if s is true, the message will append /me)
+        if message.startswith('/me'):
             message = "/me " + message
-        mixer.send(json.dumps(cls.create_method("msg", message)))
+        test = json.dumps(cls.create_method("msg", message))
+        print test
+        cls.mixer.send(test)
+        print "done sending"
 
     @classmethod
     def handle_reply(cls, data):
-        pass
+        print json.dumps(data)
 
     @classmethod
     def handle_event(cls, data):
@@ -243,6 +243,7 @@ atexit.register(unload)
 
 
 if __name__ == "__main__":
+    Parent.MixerChat = MixerChat
     opt = read_settings()
     MixerChat.init(opt)
     script_handler = ScriptHandler()
