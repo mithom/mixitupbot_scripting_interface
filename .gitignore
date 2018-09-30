@@ -1,0 +1,5 @@
+scripts/
+database.db
+*.pyc
+settingsM.json
+settingsT.json
