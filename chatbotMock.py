@@ -2,12 +2,16 @@ import random
 import importlib
 import sys
 import os
+import time
+from mxpy import MixerChat
 
 
 # noinspection PyPep8Naming,PyUnusedLocal
 class Parent(object):
     viewer_list = {}
     stop = False
+    cooldowns = {}
+    user_cooldowns = {}
 
     @classmethod
     def SendStreamMessage(cls, msg):
@@ -32,7 +36,7 @@ class Parent(object):
 
     @classmethod
     def IsLive(cls):
-        return True
+        return MixerChat.mixerApi.get_channel_online()
 
     @classmethod
     def GetDisplayName(cls, user_id):
@@ -69,19 +73,19 @@ class Parent(object):
 
     @classmethod
     def IsOnUserCooldown(cls, scriptname, commandname, user):
-        return False
+        return time.time() < cls.user_cooldowns.get(scriptname + commandname, {}).get(user, 0)
 
     @classmethod
     def IsOnCooldown(cls, scriptname, commandname):
-        return False
+        return time.time() < cls.cooldowns.get(scriptname + commandname, 0)
 
     @classmethod
     def AddUserCooldown(cls, scriptname, commandname, user, seconds):
-        return
+        cls.user_cooldowns[scriptname + commandname][user] = time.time() + seconds
 
     @classmethod
     def AddCooldown(cls, scriptname, commandname, seconds):
-        return
+        cls.cooldowns[scriptname + commandname] = time.time() + seconds
 
     @classmethod
     def HasPermission(cls, user, permission, extra):

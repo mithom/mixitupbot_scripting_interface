@@ -51,6 +51,10 @@ class MixerApi(object):
         r = requests.get(self.v1 + 'channels/%s?fields=id' % self.config["username"])
         return r.json()["id"]
 
+    def get_channel_online(self):
+        r = requests.get(self.v1 + 'channels/%s?fields=online' % self.config["username"])
+        return r.json()["online"]
+
     def get_chat(self, channel_id):
         headers = {'Authorization': "Bearer " + self.OAuthKey}
         r = requests.get(self.v1 + 'chats/%i' % channel_id, headers=headers)
