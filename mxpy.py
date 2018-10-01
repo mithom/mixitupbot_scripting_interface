@@ -1,18 +1,19 @@
-import database as db
-from chatbotMock import Parent, Data
 import json
 import sys
 import os
 import webbrowser
 import random
 from threading import Thread
+import time
+import atexit
+import traceback
 
 sys.path.append(os.path.join(os.path.dirname(__file__), 'lib'))
+from chatbotMock import Parent, Data
 import OAuth
 import websocket
 import requests
-import time
-import atexit
+
 
 file_path = os.path.dirname(__file__)
 script_path = os.path.join(file_path, 'scripts')
@@ -20,7 +21,6 @@ script_path = os.path.join(file_path, 'scripts')
 
 def init(config):
     OAuth.config = config
-    db.create_table_if_not_exists()
     if not OAuth.start():
         url = "https://127.0.0.1:5555/"
         webbrowser.open(url, new=1, autoraise=True)
@@ -152,7 +152,7 @@ class MixerChat(object):
 
     @classmethod
     def handle_reply(cls, data):
-        print json.dumps(data)
+        pass  # print json.dumps(data)
 
     @classmethod
     def handle_event(cls, data):
@@ -168,8 +168,8 @@ class MixerChat(object):
             Parent.add_viewer(data["data"]["id"], data["data"]["username"])
         if data['event'] == "UserLeave":
             del Parent.viewer_list[data["data"]["id"]]
-        else:
-            print data
+        """else:
+            print data"""
 
 
 class ScriptHandler(object):
@@ -187,6 +187,7 @@ class ScriptHandler(object):
                         os.path.join(os.path.join(script_path, script_folder), script_name + ".py")))
                 except Exception as e:
                     print e.message
+                    traceback.print_exc()
             else:
                 print("invalid script folder: " + script_folder)
 
@@ -205,6 +206,7 @@ class ScriptHandler(object):
                         script.Execute(data)
                     except Exception as e:
                         print 'Error', e.message
+                        traceback.print_exc()
                     if Parent.stop:
                         Parent.stop = False
                         break

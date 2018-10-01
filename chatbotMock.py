@@ -1,8 +1,8 @@
-import random
 import importlib
 import sys
 import os
 import time
+import requests
 
 
 # noinspection PyPep8Naming,PyUnusedLocal
@@ -12,6 +12,8 @@ class Parent(object):
     cooldowns = {}
     user_cooldowns = {}
     MixerChat = None
+    currency_name = "lyonbucks"
+    mixitupbot = "http://localhost:8911/api"
 
     @classmethod
     def SendStreamMessage(cls, msg):
@@ -24,11 +26,18 @@ class Parent(object):
 
     @classmethod
     def RemovePoints(cls, user_id, username, amount):
-        return True
+        return cls.GetPoints(user_id) >= amount
 
     @classmethod
     def AddPoints(cls, user_id, username, amount):
-        return user_id in cls.viewer_list
+        resp = requests.get(cls.mixitupbot + "/users/" + str(user_id)).json()
+        for currency in resp["CurrencyAmounts"]:
+            if currency["Name"] == cls.currency_name:
+                currency["Amount"] += amount
+        print str(resp)
+        print cls.mixitupbot+"/users/"+str(user_id)
+        resp = requests.patch(cls.mixitupbot+"/users/"+str(user_id), data=resp, timeout=1)
+        print resp
 
     @classmethod
     def AddPointsAll(cls, points_dict):
@@ -61,15 +70,19 @@ class Parent(object):
 
     @classmethod
     def GetCurrencyName(cls):
-        return "currencyName"
+        return cls.currency_name
 
     @classmethod
     def GetChannelName(cls):
-        return "channelName"
+        return cls.MixerChat.config["channel"]
 
     @classmethod
     def GetPoints(cls, user_id):
-        return random.randint(0, 1000)
+        data = requests.get(cls.mixitupbot + "/users/"+str(user_id)).json()
+        try:
+            return [x["Amount"] for x in data["CurrencyAmounts"] if x["Name"] == cls.currency_name][0]
+        except IndexError:
+            return 0
 
     @classmethod
     def IsOnUserCooldown(cls, scriptname, commandname, user):
