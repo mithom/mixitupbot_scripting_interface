@@ -21,9 +21,9 @@ script_path = os.path.join(file_path, 'scripts')
 def init(config):
     OAuth.config = config
     db.create_table_if_not_exists()
-    OAuth.start()
-    url = "https://127.0.0.1:5555/"
-    webbrowser.open(url, new=1, autoraise=True)
+    if not OAuth.start():
+        url = "https://127.0.0.1:5555/"
+        webbrowser.open(url, new=1, autoraise=True)
     return OAuth.stop()
 
 
@@ -148,9 +148,7 @@ class MixerChat(object):
         if message.startswith('/me'):
             message = "/me " + message
         test = json.dumps(cls.create_method("msg", message))
-        print test
         cls.mixer.send(test)
-        print "done sending"
 
     @classmethod
     def handle_reply(cls, data):
@@ -170,6 +168,8 @@ class MixerChat(object):
             Parent.add_viewer(data["data"]["id"], data["data"]["username"])
         if data['event'] == "UserLeave":
             del Parent.viewer_list[data["data"]["id"]]
+        else:
+            print data
 
 
 class ScriptHandler(object):
