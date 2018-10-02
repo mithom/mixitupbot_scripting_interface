@@ -3,3 +3,4 @@ database.db
 *.pyc
 settingsM.json
 settingsT.json
+token.json
