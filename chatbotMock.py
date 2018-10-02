@@ -3,6 +3,7 @@ import sys
 import os
 import time
 import requests
+import json
 
 
 # noinspection PyPep8Naming,PyUnusedLocal
@@ -22,11 +23,18 @@ class Parent(object):
 
     @classmethod
     def Log(cls, script_name, log):
-        print "log from "+script_name+": "+log
+        print "log from " + script_name + ": " + log
 
     @classmethod
     def RemovePoints(cls, user_id, username, amount):
-        return cls.GetPoints(user_id) >= amount
+        resp = requests.get(cls.mixitupbot + "/users/" + str(user_id)).json()
+        for currency in resp["CurrencyAmounts"]:
+            if currency["Name"] == cls.currency_name:
+                if currency["Amount"] >= amount:
+                    currency["Amount"] -= amount
+                    resp = requests.put(cls.mixitupbot + "/users/" + str(user_id), json=resp, timeout=1)
+                    return resp.status_code == 200
+        return False
 
     @classmethod
     def AddPoints(cls, user_id, username, amount):
@@ -34,13 +42,13 @@ class Parent(object):
         for currency in resp["CurrencyAmounts"]:
             if currency["Name"] == cls.currency_name:
                 currency["Amount"] += amount
-        print str(resp)
-        print cls.mixitupbot+"/users/"+str(user_id)
-        resp = requests.patch(cls.mixitupbot+"/users/"+str(user_id), data=resp, timeout=1)
-        print resp
+                resp = requests.put(cls.mixitupbot + "/users/" + str(user_id), json=resp, timeout=1)
+                return resp.status_code == 200
+        return False
 
     @classmethod
     def AddPointsAll(cls, points_dict):
+        print "not yet implemented: AddPointsAll"
         return filter(lambda user_id: user_id in cls.viewer_list, points_dict)
 
     @classmethod
@@ -78,7 +86,7 @@ class Parent(object):
 
     @classmethod
     def GetPoints(cls, user_id):
-        data = requests.get(cls.mixitupbot + "/users/"+str(user_id)).json()
+        data = requests.get(cls.mixitupbot + "/users/" + str(user_id)).json()
         try:
             return [x["Amount"] for x in data["CurrencyAmounts"] if x["Name"] == cls.currency_name][0]
         except IndexError:
@@ -104,11 +112,19 @@ class Parent(object):
 
     @classmethod
     def HasPermission(cls, user, permission, extra):
+        print "not yet implemented: HasPermission"
         return True
 
     @classmethod
     def BroadcastWsEvent(cls, eventname, jsondata):
+        print "not yet implemented: BroadvastWsEvent"
         pass
+
+    @classmethod
+    def GetRequest(cls, url, headers):
+        resp = requests.get(url, headers=headers)
+        return json.dumps({"status": resp.status_code,
+                           "response": resp.text})
 
 
 # noinspection PyPep8Naming
@@ -120,13 +136,14 @@ class Data(object):
         self.Whisper = whisper
 
     def IsChatMessage(self):
-        return not self.Message.startswith("/w ")
+        return not self.Whisper
 
     def IsWhisper(self):
         return self.Whisper
 
     def IsFromDiscord(self):
-        return self.Message.startswith("/d ")
+        print "not yet implemented: IsFromDiscord"
+        return False
 
     def GetParamCount(self):
         return len(self.Message.split())
@@ -139,7 +156,7 @@ def start(script_name, folder=None):
     def gather_input():
         user = raw_input("username? ")
         if len(user) > 0:
-            messages.append(Data("id:"+user, user, raw_input("msg: ")))
+            messages.append(Data("id:" + user, user, raw_input("msg: ")))
 
     sys.path.append(os.path.join(os.path.dirname(__file__), folder or script_name))
     if not script_name.endswith("_StreamlabsSystem"):
