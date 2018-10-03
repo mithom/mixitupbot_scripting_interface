@@ -18,6 +18,7 @@ class Parent(object):
     mixitupbot = "http://localhost:8911/api"
     subscribers = {}
     API_Key = None
+    stream_online = False
 
     @classmethod
     def SendStreamMessage(cls, msg):
@@ -56,28 +57,28 @@ class Parent(object):
 
     @classmethod
     def IsLive(cls):
-        return cls.MixerChat.mixerApi.get_channel_online()
+        return cls.stream_online
 
     @classmethod
     def GetDisplayName(cls, user_id):
-        return cls.viewer_list[user_id]
+        return cls.viewer_list[user_id]["username"]
 
     @classmethod
-    def GetDisplayNames(cls, user_names):
-        return [cls.viewer_list[username] for username in user_names]
+    def GetDisplayNames(cls, user_ids):
+        return [cls.viewer_list[user_id]["username"] for user_id in user_ids]
 
     @classmethod
-    def GetActiveUsers(cls):
-        return list(cls.viewer_list)
+    def GetActiveUsers(cls):  # TODO: filter active
+        return [user_data["username"] for user_data in cls.viewer_list.itervalues()]
 
     @classmethod
     def GetViewerList(cls):
-        return list(cls.viewer_list)
+        return [user_data["username"] for user_data in cls.viewer_list.itervalues()]
 
     # to make the mock work
     @classmethod
-    def add_viewer(cls, user, user_name):
-        cls.viewer_list[user] = user_name
+    def add_viewer(cls, user_id, user_data):
+        cls.viewer_list[user_id] = user_data
 
     @classmethod
     def GetCurrencyName(cls):

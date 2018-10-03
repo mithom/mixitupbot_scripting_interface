@@ -32,7 +32,7 @@ def init(config):
 
 def read_settings():
     # Open JSON settings file
-    with open("settingsM.json") as data:
+    with codecs.open(os.path.join(file_path, "settingsM.json"), encoding="utf-8-sig", mode="r") as data:
         return json.load(data)
 
 
@@ -53,7 +53,7 @@ class MixerApi(object):
         return r.json()["id"]
 
     def get_channel_online(self):
-        r = requests.get(self.v1 + 'channels/%s?fields=online' % self.config["username"], timeout=1)
+        r = requests.get(self.v1 + 'channels/%s?fields=online' % self.config["username"], timeout=1.5)
         return r.json()["online"]
 
     def get_chat(self, channel_id):
@@ -168,7 +168,7 @@ class MixerChat(object):
             whisp = "whisper" in data["data"]["message"]["meta"]
             ScriptHandler.to_process.append(Data(data["data"]["user_id"], data["data"]["user_name"], msg, whisp))
         if data['event'] == "UserJoin":
-            Parent.add_viewer(data["data"]["id"], data["data"]["username"])
+            Parent.add_viewer(data["data"]["id"], data["data"])
         if data['event'] == "UserLeave":
             del Parent.viewer_list[data["data"]["id"]]
         """else:
@@ -227,7 +227,11 @@ class ScriptHandler(object):
     def scripts_loop(self):
         self.init()
         next_t = 0
+        live_check = 0
         while not stopped.is_set():
+            if time.time() < live_check:
+                Parent.stream_online = MixerChat.mixerApi.get_channel_online()
+                live_check = time.time() + 120
             if len(self.to_process) > 0:
                 data = self.to_process.pop(0)
                 for script in self.scripts:
