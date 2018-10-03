@@ -48,7 +48,8 @@ def start():
     except:
         print "error"
         app.secret_key = os.urandom(24)
-        server = Thread(target=app.run, daemon=True, kwargs={"ssl_context": "adhoc", "port": 5555, "host": "0.0.0.0"})
+        server = Thread(target=app.run, kwargs={"ssl_context": "adhoc", "port": 5555, "host": "0.0.0.0"})
+        server.daemon = True
         server.start()
         return False
 

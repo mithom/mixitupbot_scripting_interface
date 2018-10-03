@@ -1,18 +1,21 @@
 import json
+import codecs
 import sys
 import os
 import webbrowser
 import random
-from threading import Thread
+from threading import Thread, Event
 import time
 import atexit
 import traceback
+import binascii
 
 sys.path.append(os.path.join(os.path.dirname(__file__), 'lib'))
 from chatbotMock import Parent, Data
 import OAuth
 import websocket
 import requests
+from websocket_server import WebsocketServer
 
 
 file_path = os.path.dirname(__file__)
@@ -177,28 +180,52 @@ class ScriptHandler(object):
 
     def __init__(self):
         self.scripts = []
+        self.API_Key = binascii.b2a_base64(os.urandom(15))[:-1]
+        self.API_socket = "ws://127.0.0.1:3337/streamlabs"
+        self.websocket = None
         self.script_folders = [f for f in os.listdir(script_path) if os.path.isdir(os.path.join(script_path, f))]
         for script_folder in self.script_folders:
             content = os.listdir(os.path.join(script_path, script_folder))
             script_name = script_folder + "_StreamlabsSystem"
             if script_name + ".py" in content and "UI_Config.json" in content:
                 try:
+                    specific_scripth_path = os.path.join(script_path, script_folder)
                     self.scripts.append(self.import_by_filename(
-                        os.path.join(os.path.join(script_path, script_folder), script_name + ".py")))
+                        os.path.join(specific_scripth_path, script_name + ".py")))
+                    self.insert_API_Key(specific_scripth_path)
                 except Exception as e:
                     print e.message
                     traceback.print_exc()
             else:
                 print("invalid script folder: " + script_folder)
 
+    def insert_API_Key(self, dir_path):
+        api_file = os.path.join(dir_path, "API_KEY.js")
+        try:
+            with codecs.open(api_file, encoding="utf-8-sig", mode="w") as f:
+                f.write("var API_Key = {0};\nvar API_Socket = {1};".format(self.API_Key, self.API_Socket))
+        except:
+            traceback.print_exc()
+
+    def start_websocket(self):
+        self.websocket = WebsocketServer(3337, "127.0.0.1")
+        self.websocket.set_fn_new_client(Parent.on_client_connect)
+        self.websocket.set_fn_client_left(Parent.on_client_disconnect)
+        self.websocket.set_fn_message_received(Parent.on_message)
+        thread = thread(target=self.websocket.run_forever)
+        thread.daemon = True
+        thread.start()
+        Parent.websocket = self.websocket
+        
     def init(self):
         for script in self.scripts:
             script.Parent = Parent
             script.Init()
 
     def scripts_loop(self):
+        self.init()
         next_t = 0
-        while not stopped:
+        while not stopped.is_set():
             if len(self.to_process) > 0:
                 data = self.to_process.pop(0)
                 for script in self.scripts:
@@ -231,10 +258,10 @@ class ScriptHandler(object):
             sys.path[:] = path  # restore
         return module
 
-stopped = False
+stopped = Event()
 def unload():
     print "stopping"
-    stopped = True
+    stopped.set()
     server.join()
     for script in script_handler.scripts:
         try:
@@ -252,7 +279,6 @@ if __name__ == "__main__":
     opt = read_settings()
     MixerChat.init(opt)
     script_handler = ScriptHandler()
-    script_handler.init()
     server = Thread(target=script_handler.scripts_loop)
     server.start()
     MixerChat.start()

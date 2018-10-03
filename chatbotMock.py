@@ -13,6 +13,7 @@ class Parent(object):
     cooldowns = {}
     user_cooldowns = {}
     MixerChat = None
+    websocket = None
     currency_name = "lyonbucks"
     mixitupbot = "http://localhost:8911/api"
 
@@ -118,13 +119,26 @@ class Parent(object):
     @classmethod
     def BroadcastWsEvent(cls, eventname, jsondata):
         print "not yet implemented: BroadvastWsEvent"
-        pass
+        cls.websocket.send_message_to_all(json.dumps({"event":eventname,"data":jsondata)}))
+        # TODO: only send to subscribed clients
 
     @classmethod
     def GetRequest(cls, url, headers):
         resp = requests.get(url, headers=headers)
         return json.dumps({"status": resp.status_code,
                            "response": resp.text})
+
+    @staticmethod
+    def on_message(client, server, message):
+        pass
+
+    @staticmethod
+    def on_client_connect(client, server):
+        pass
+
+    @staticmethod
+    def on_client_disconnect(client, server):
+        pass
 
 
 # noinspection PyPep8Naming
