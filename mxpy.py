@@ -45,26 +45,26 @@ class MixerApi(object):
 
     def get_current_user_id(self):
         headers = {'Authorization': "Bearer " + self.OAuthKey or self.config["authkey"]}
-        r = requests.get(self.v1 + 'users/current', headers=headers)
+        r = requests.get(self.v1 + 'users/current', headers=headers, timeout=1)
         return r.json()["id"]
 
     def get_channel_id(self):
-        r = requests.get(self.v1 + 'channels/%s?fields=id' % self.config["username"])
+        r = requests.get(self.v1 + 'channels/%s?fields=id' % self.config["username"], timeout=1)
         return r.json()["id"]
 
     def get_channel_online(self):
-        r = requests.get(self.v1 + 'channels/%s?fields=online' % self.config["username"])
+        r = requests.get(self.v1 + 'channels/%s?fields=online' % self.config["username"], timeout=1)
         return r.json()["online"]
 
     def get_chat(self, channel_id):
         headers = {'Authorization': "Bearer " + self.OAuthKey}
-        r = requests.get(self.v1 + 'chats/%i' % channel_id, headers=headers)
+        r = requests.get(self.v1 + 'chats/%i' % channel_id, headers=headers, timeout=1)
         data = r.json()
         return random.choice(data["endpoints"]), data.get("authkey", None), \
                data.get("roles", []), data.get("permissions", [])
 
     def get_user_id(self):
-        return requests.get(self.v1 + 'users/search/%s' % self.config["username"]).json()[0]["id"]
+        return requests.get(self.v1 + 'users/search/%s' % self.config["username"], timeout=1).json()[0]["id"]
 
 
 class MixerChat(object):
@@ -109,11 +109,11 @@ class MixerChat(object):
             yield i
 
     @staticmethod
-    def close():
+    def close(mixer):
         print('closed')
 
     @staticmethod
-    def error(err):
+    def error(mixer, err):
         print('error')
         print(err)
 
@@ -181,7 +181,7 @@ class ScriptHandler(object):
     def __init__(self):
         self.scripts = []
         self.API_Key = binascii.b2a_base64(os.urandom(15))[:-1]
-        self.API_socket = "ws://127.0.0.1:3337/streamlabs"
+        self.API_Socket = "ws://127.0.0.1:3337/streamlabs"
         self.websocket = None
         self.script_folders = [f for f in os.listdir(script_path) if os.path.isdir(os.path.join(script_path, f))]
         for script_folder in self.script_folders:
@@ -203,7 +203,7 @@ class ScriptHandler(object):
         api_file = os.path.join(dir_path, "API_KEY.js")
         try:
             with codecs.open(api_file, encoding="utf-8-sig", mode="w") as f:
-                f.write("var API_Key = {0};\nvar API_Socket = {1};".format(self.API_Key, self.API_Socket))
+                f.write('var API_Key = "{0}";\nvar API_Socket = "{1}";'.format(self.API_Key, self.API_Socket))
         except:
             traceback.print_exc()
 
@@ -212,12 +212,14 @@ class ScriptHandler(object):
         self.websocket.set_fn_new_client(Parent.on_client_connect)
         self.websocket.set_fn_client_left(Parent.on_client_disconnect)
         self.websocket.set_fn_message_received(Parent.on_message)
-        thread = thread(target=self.websocket.run_forever)
+        thread = Thread(target=self.websocket.run_forever)
         thread.daemon = True
         thread.start()
         Parent.websocket = self.websocket
+        Parent.API_Key = self.API_Key
         
     def init(self):
+        self.start_websocket()
         for script in self.scripts:
             script.Parent = Parent
             script.Init()
@@ -244,6 +246,7 @@ class ScriptHandler(object):
                         script.Tick()
                     except Exception as e:
                         print 'Error', e.message
+                        traceback.print_exc()
 
     @staticmethod
     def import_by_filename(filename):
@@ -258,7 +261,10 @@ class ScriptHandler(object):
             sys.path[:] = path  # restore
         return module
 
+
 stopped = Event()
+
+
 def unload():
     print "stopping"
     stopped.set()

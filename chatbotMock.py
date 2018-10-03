@@ -16,6 +16,8 @@ class Parent(object):
     websocket = None
     currency_name = "lyonbucks"
     mixitupbot = "http://localhost:8911/api"
+    subscribers = {}
+    API_Key = None
 
     @classmethod
     def SendStreamMessage(cls, msg):
@@ -28,12 +30,12 @@ class Parent(object):
 
     @classmethod
     def RemovePoints(cls, user_id, username, amount):
-        resp = requests.get(cls.mixitupbot + "/users/" + str(user_id)).json()
+        resp = requests.get(cls.mixitupbot + "/users/" + str(user_id), timeout=0.5).json()
         for currency in resp["CurrencyAmounts"]:
             if currency["Name"] == cls.currency_name:
                 if currency["Amount"] >= amount:
                     currency["Amount"] -= amount
-                    resp = requests.put(cls.mixitupbot + "/users/" + str(user_id), json=resp, timeout=1)
+                    resp = requests.put(cls.mixitupbot + "/users/" + str(user_id), json=resp, timeout=0.5)
                     return resp.status_code == 200
         return False
 
@@ -43,7 +45,7 @@ class Parent(object):
         for currency in resp["CurrencyAmounts"]:
             if currency["Name"] == cls.currency_name:
                 currency["Amount"] += amount
-                resp = requests.put(cls.mixitupbot + "/users/" + str(user_id), json=resp, timeout=1)
+                resp = requests.put(cls.mixitupbot + "/users/" + str(user_id), json=resp, timeout=0.5)
                 return resp.status_code == 200
         return False
 
@@ -87,7 +89,7 @@ class Parent(object):
 
     @classmethod
     def GetPoints(cls, user_id):
-        data = requests.get(cls.mixitupbot + "/users/" + str(user_id)).json()
+        data = requests.get(cls.mixitupbot + "/users/" + str(user_id), timeout=0.5).json()
         try:
             return [x["Amount"] for x in data["CurrencyAmounts"] if x["Name"] == cls.currency_name][0]
         except IndexError:
@@ -118,27 +120,34 @@ class Parent(object):
 
     @classmethod
     def BroadcastWsEvent(cls, eventname, jsondata):
-        print "not yet implemented: BroadvastWsEvent"
-        cls.websocket.send_message_to_all(json.dumps({"event":eventname,"data":jsondata)}))
-        # TODO: only send to subscribed clients
+        for client_id, client in Parent.subscribers.get(eventname, {}).iteritems():
+            cls.websocket.send_message(client, json.dumps({"event": eventname, "data": jsondata}))
 
     @classmethod
     def GetRequest(cls, url, headers):
-        resp = requests.get(url, headers=headers)
+        resp = requests.get(url, headers=headers, timeout=0.5)
         return json.dumps({"status": resp.status_code,
                            "response": resp.text})
 
     @staticmethod
     def on_message(client, server, message):
-        pass
+        data = json.loads(message)
+        if data.get("api_key", None) == Parent.API_Key:
+            for event in data.get("events", {}):
+                if event in Parent.subscribers:
+                    Parent.subscribers[event][client["id"]] = client
+                else:
+                    Parent.subscribers[event] = {client["id"]: client}
 
     @staticmethod
     def on_client_connect(client, server):
-        pass
+        print "client connected" + str(client)
 
     @staticmethod
     def on_client_disconnect(client, server):
-        pass
+        for event in Parent.subscribers:
+            if client["id"] in Parent.subscribers[event]:
+                del Parent.subscribers[event][client["id"]]
 
 
 # noinspection PyPep8Naming
@@ -155,8 +164,7 @@ class Data(object):
     def IsWhisper(self):
         return self.Whisper
 
-    def IsFromDiscord(self):
-        print "not yet implemented: IsFromDiscord"
+    def IsFromDiscord(self):  # no discord will be implemented
         return False
 
     def GetParamCount(self):
