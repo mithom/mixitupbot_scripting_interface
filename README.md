@@ -7,7 +7,7 @@ then copy and paste `python -m mxpy` into the shell that opened and press enter
 
 ## Settings
 you will need to configure some settings to let the program know it is you, copy the 'settingsM.json.example' file and call it settingsM.json
-now open it and fill in your username and channel name. For now, you also need a secret_key and client_id for those you can either make an OAuth client on [https://mixer.com/lab/oauth](mixer dev lab) or contact me. (i will update this)
+now open it and fill in your username and channel name. For now, you also need a secret_key and client_id for those you can either make an OAuth client on (https://mixer.com/lab/oauth)[mixer dev lab] or contact me. (i will update this)
 if you make an OAuth client yourself, enable secret key and fill in 'localhost' as host.
 Do this before running the program (or restart afterwards)
 
