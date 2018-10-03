@@ -198,7 +198,7 @@ class ScriptHandler(object):
 
     def scripts_loop(self):
         next_t = 0
-        while True:
+        while not stopped:
             if len(self.to_process) > 0:
                 data = self.to_process.pop(0)
                 for script in self.scripts:
@@ -231,14 +231,17 @@ class ScriptHandler(object):
             sys.path[:] = path  # restore
         return module
 
-
+stopped = False
 def unload():
-    print "stop"
+    print "stopping"
+    stopped = True
+    server.join()
     for script in script_handler.scripts:
         try:
             script.Unload()
         except AttributeError:
             pass
+    print "succesfully stopped"
 
 
 atexit.register(unload)
