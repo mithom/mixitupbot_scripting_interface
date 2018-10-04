@@ -14,7 +14,7 @@ class Parent(object):
     user_cooldowns = {}
     MixerChat = None
     websocket = None
-    currency_name = "lyonbucks"
+    currency_name = "LyonBucks"
     mixitupbot = "http://localhost:8911/api"
     subscribers = {}
     API_Key = None

@@ -9,6 +9,7 @@ import time
 import atexit
 import traceback
 import binascii
+import ctypes
 
 sys.path.append(os.path.join(os.path.dirname(__file__), 'lib'))
 from chatbotMock import Parent, Data
@@ -51,11 +52,11 @@ class MixerApi(object):
         return r.json()["id"]
 
     def get_channel_id(self):
-        r = requests.get(self.v1 + 'channels/%s?fields=id' % self.config["username"], timeout=1)
+        r = requests.get(self.v1 + 'channels/%s?fields=id' % self.config["channel"], timeout=1)
         return r.json()["id"]
 
     def get_channel_online(self):
-        r = requests.get(self.v1 + 'channels/%s?fields=online' % self.config["username"], timeout=1.5)
+        r = requests.get(self.v1 + 'channels/%s?fields=online' % self.config["channel"], timeout=1.5)
         return r.json()["online"]
 
     def get_chat(self, channel_id):
@@ -66,7 +67,7 @@ class MixerApi(object):
                data.get("roles", []), data.get("permissions", [])
 
     def get_user_id(self):
-        return requests.get(self.v1 + 'users/search/%s' % self.config["username"], timeout=1).json()[0]["id"]
+        return requests.get(self.v1 + 'users/search?query=%s' % self.config["username"], timeout=2).json()[0]["id"]
 
 
 class MixerChat(object):
@@ -90,7 +91,7 @@ class MixerChat(object):
         cls.OAuthKey = keys["access_token"]
         cls.config = config
         cls.mixerApi = MixerApi(config, cls.OAuthKey)
-        cls.user_id = cls.mixerApi.get_current_user_id()
+        cls.user_id = cls.mixerApi.get_user_id()
         cls.channel_id = cls.mixerApi.get_channel_id()
         cls.chat_url, cls.authKey, cls.roles, cls.permissions = cls.mixerApi.get_chat(cls.channel_id)
         headers = {'Client-ID': cls.config["client_id"]}
@@ -157,7 +158,11 @@ class MixerChat(object):
 
     @classmethod
     def handle_reply(cls, data):
-        pass  # print json.dumps(data)
+        if cls.id_types[data["id"]] == "auth":
+            if data.get("error", None) is not None:
+                msg = "please authorize the correct user, you probably authorized you main account instead of your bot." \
+                      "\ndelete token.json and try again!"
+                ctypes.windll.user32.MessageBoxA(0, msg, "wrong account authorized", 0)
 
     @classmethod
     def handle_event(cls, data):
@@ -165,6 +170,11 @@ class MixerChat(object):
             return msg1 + msg2["text"]
 
         if data['event'] == "ChatMessage":
+            if data["data"]["user_id"] not in Parent.viewer_list:
+                userdata = {"username": data["data"]["user_name"],
+                            "id": data["data"]["user_id"],
+                            "roles": data["data"]["user_roles"]}
+                Parent.add_viewer(userdata["id"], userdata)
             data["data"]["message"]["message"].insert(0, "")
             msg = reduce(concat, data["data"]["message"]["message"])
             whisp = "whisper" in data["data"]["message"]["meta"]
@@ -274,15 +284,17 @@ stopped = Event()
 def unload():
     print "stopping"
     stopped.set()
-    server.join()
-    for script in script_handler.scripts:
-        try:
-            script.Unload()
-        except AttributeError:
-            pass
+    if server is not None:
+        server.join()
+        for script in script_handler.scripts:
+            try:
+                script.Unload()
+            except AttributeError:
+                pass
     print "succesfully stopped"
 
 
+server = None
 atexit.register(unload)
 
 
