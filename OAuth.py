@@ -24,7 +24,7 @@ def demo():
              "chat:bypass_links", "chat:change_ban", "chat:change_role", "chat:clear_messages",
              "chat:giveaway_start", "chat:poll_start", "chat:poll_vote", "chat:purge",
              "chat:timeout", "chat:view_deleted", "chat:whisper", "resource:find:self"]
-    mixer = OAuth2Session(config["client_id"], redirect_uri='https://localhost:5555/callback', scope=scope)
+    mixer = OAuth2Session(config["client_id"], redirect_uri='https://127.0.0.1:5555/callback', scope=scope)
     auth_url, state = mixer.authorization_url(authorization_base_url)
     return redirect(auth_url)
 
@@ -32,7 +32,7 @@ def demo():
 @app.route("/callback", methods=["GET"])
 def callback():
     global token, state
-    mixer = OAuth2Session(config["client_id"], state=state, redirect_uri='https://localhost:5555/callback')
+    mixer = OAuth2Session(config["client_id"], state=state, redirect_uri='https://127.0.0.1:5555/callback')
     token = mixer.fetch_token(token_url, client_secret=config["client_secret"], authorization_response=request.url)
     shutdown_server()
     return "you can now close this window"
@@ -48,7 +48,7 @@ def start():
     except:
         print "error"
         app.secret_key = os.urandom(24)
-        server = Thread(target=app.run, kwargs={"ssl_context": "adhoc", "port": 5555, "host": "0.0.0.0"})
+        server = Thread(target=app.run, kwargs={"ssl_context": "adhoc", "port": 5555, "host": "127.0.0.1"})
         server.daemon = True
         server.start()
         return False
