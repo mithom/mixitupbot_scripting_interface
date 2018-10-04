@@ -13,6 +13,8 @@ token_url = 'https://mixer.com/api/v1/oauth/token'
 config = None
 token = None
 server = None
+cert = None
+key = None
 
 token_file = os.path.join(os.path.dirname(__file__),"token.json")
 
@@ -48,7 +50,7 @@ def start():
     except:
         print "error"
         app.secret_key = os.urandom(24)
-        server = Thread(target=app.run, kwargs={"ssl_context": "adhoc", "port": 5555, "host": "0.0.0.0"})
+        server = Thread(target=app.run, kwargs={"ssl_context": (cert, key), "port": 5555, "host": "0.0.0.0"})
         server.daemon = True
         server.start()
         return False

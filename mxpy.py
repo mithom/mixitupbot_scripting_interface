@@ -24,6 +24,8 @@ script_path = os.path.join(file_path, 'scripts')
 
 def init(config):
     OAuth.config = config
+    OAuth.cert = os.path.join(os.path.dirname(__file__), 'script_interface.crt')
+    OAuth.key = os.path.join(os.path.dirname(__file__), 'script_interface.key')
     if not OAuth.start():
         url = "https://127.0.0.1:5555/"
         webbrowser.open(url, new=1, autoraise=True)
