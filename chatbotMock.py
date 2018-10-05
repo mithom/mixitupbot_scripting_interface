@@ -19,6 +19,8 @@ class Parent(object):
     subscribers = {}
     API_Key = None
     stream_online = False
+    currency_id = None
+    ranks = None
 
     @classmethod
     def SendStreamMessage(cls, msg):
@@ -26,30 +28,30 @@ class Parent(object):
         cls.stop = True
 
     @classmethod
+    def get_currency_id(cls):
+        if cls.currency_id is None:
+            resp = requests.get(cls.mixitupbot + "/currency", timeout = 1)
+            if resp.status_code == 200:
+                currency = filter(lambda x: x["Name"] == cls.currency_name, resp.json())[0]
+                cls.currency_id = currency["ID"]
+                cls.ranks = {rank["Name"]: rank["MinimumPoints"] for rank in currency["Ranks"]}
+        return cls.currency_id
+
+    @classmethod
     def Log(cls, script_name, log):
         print "log from " + script_name + ": " + log
 
     @classmethod
     def RemovePoints(cls, user_id, username, amount):
-        resp = requests.get(cls.mixitupbot + "/users/" + str(user_id), timeout=0.5).json()
-        for currency in resp["CurrencyAmounts"]:
-            if currency["Name"] == cls.currency_name:
-                if currency["Amount"] >= amount:
-                    currency["Amount"] -= amount
-                    resp = requests.put(cls.mixitupbot + "/users/" + str(user_id), json=resp, timeout=0.5)
-                    return resp.status_code == 200
-        return False
+        requests.patch('http://localhost:8911/api/users/%i/currency/%s/adjust'%(usser_id, cls.get_currency_id()),
+                       json.dumps({"amount":-amount}), timeout=0.5)
+        return resp.status_code == 200
 
     @classmethod
     def AddPoints(cls, user_id, username, amount):
-        resp = requests.get(cls.mixitupbot + "/users/" + str(user_id)).json()
-        for currency in resp["CurrencyAmounts"]:
-            if currency["Name"] == cls.currency_name:
-                currency["Amount"] += amount
-                resp = requests.put(cls.mixitupbot + "/users/" + str(user_id), json=resp, timeout=0.5)
-                return resp.status_code == 200
-        return False
-
+        requests.patch('http://localhost:8911/api/users/%i/currency/%s/adjust'%(usser_id, cls.get_currency_id()),
+                       json.dumps({"amount":amount}), timeout=0.5)
+        return resp.status_code == 200
     @classmethod
     def AddPointsAll(cls, points_dict):
         print "not yet implemented: AddPointsAll"
@@ -92,7 +94,7 @@ class Parent(object):
     def GetPoints(cls, user_id):
         data = requests.get(cls.mixitupbot + "/users/" + str(user_id), timeout=0.5).json()
         try:
-            return [x["Amount"] for x in data["CurrencyAmounts"] if x["Name"] == cls.currency_name][0]
+            return [x["Amount"] for x in data["CurrencyAmounts"] if x["ID"] == cls.get_currency_id()][0]
         except IndexError:
             return 0
 
