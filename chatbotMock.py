@@ -119,10 +119,31 @@ class Parent(object):
     def AddCooldown(cls, scriptname, commandname, seconds):
         cls.cooldowns[scriptname + commandname] = time.time() + seconds
 
+    functions = {"Everyone": lambda x, y: True,
+                 "Regular": lambda x, y: Parent.GetHours(x) / 60 >= 5,
+                 "Subscriber": lambda x, y: "Subscriber" in Parent.viewer_list[x]["roles"],
+                 "GameWisp Subscriber": lambda x, y: False,
+                 "Moderator": lambda x, y: "Moderator" in Parent.viewer_list[x]["roles"] or
+                                           "ChannelEditor" in Parent.viewer_list[x]["roles"] or
+                                           "Owner" in Parent.viewer_list[x]["roles"],
+                 "Editor": lambda x, y: "ChannelEditor" in Parent.viewer_list[x]["roles"] or
+                                        "Owner" in Parent.viewer_list[x]["roles"],
+                 "User_Specific": lambda x, y: y == Parent.viewer_list[x]["username"],
+                 "Min_Rank": lambda x, y: Parent.GetPoints(x) >= Parent.ranks[y],
+                 "Min_Points": lambda x, y: Parent.GetPoints(x) >= y,
+                 "Min_Hours": lambda x, y: Parent.GetHours(x) >= y}
+
+    @classmethod
+    def GetHours(cls, user_id):
+        data = requests.get(cls.mixitupbot + "/users/" + str(user_id), timeout=0.5).json()
+        try:
+            return data["ViewingMinutes"] / 60
+        except (KeyError, TypeError):
+            return 0
+
     @classmethod
     def HasPermission(cls, user, permission, extra):
-        print "not yet implemented: HasPermission"
-        return True
+        return cls.functions[permission](user, extra)
 
     @classmethod
     def BroadcastWsEvent(cls, eventname, jsondata):
