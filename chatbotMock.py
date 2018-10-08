@@ -126,6 +126,7 @@ class Parent(object):
 
     @classmethod
     def GetDisplayName(cls, user_id):
+        print cls.viewer_list
         return cls.viewer_list[user_id]["username"]
 
     @classmethod
@@ -178,6 +179,14 @@ class Parent(object):
     @classmethod
     def AddCooldown(cls, scriptname, commandname, seconds):
         cls.cooldowns[scriptname + commandname] = time.time() + seconds
+
+    @classmethod
+    def GetCooldownDuration(cls, scriptname, commandname):
+        return cls.cooldowns.get(scriptname + commandname, 0)
+
+    @classmethod
+    def GetUserCooldownDuration(cls, scriptname, commandname, user):
+        return cls.user_cooldowns.get(scriptname + commandname, {}).get(user, 0)
 
     functions = {"Everyone": lambda x, y: True,
                  "Regular": lambda x, y: Parent.GetHours(x) / 60 >= 5,
