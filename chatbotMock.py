@@ -118,7 +118,7 @@ class Parent(object):
             if points > min_amount > max_min_amount:
                 high_rank = rank
                 max_min_amount = min_amount
-        return rank
+        return high_rank
 
     @classmethod
     def IsLive(cls):
