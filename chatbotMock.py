@@ -30,7 +30,7 @@ class Parent(object):
 
     @classmethod
     def SendStreamWhisper(cls, user, msg):
-        username = cls.viewer_list[user]
+        username = cls.viewer_list[user]["username"]
         cls.MixerChat.send_whisper(username, msg)
         cls.stop = True
 
