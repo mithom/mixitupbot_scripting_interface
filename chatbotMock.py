@@ -4,6 +4,7 @@ import os
 import time
 import requests
 import json
+from threading import Thread
 
 
 # noinspection PyPep8Naming,PyUnusedLocal
@@ -28,6 +29,12 @@ class Parent(object):
         cls.stop = True
 
     @classmethod
+    def SendStreamWhisper(cls, user, msg):
+        username = cls.viewer_list[user]
+        cls.MixerChat.send_whisper(username, msg)
+        cls.stop = True
+
+    @classmethod
     def get_currency_id(cls):
         if cls.currency_id is None:
             resp = requests.get(cls.mixitupbot + "/currency", timeout=1)
@@ -44,21 +51,74 @@ class Parent(object):
     @classmethod
     def RemovePoints(cls, user_id, username, amount):
         resp = requests.patch(
-            'http://localhost:8911/api/users/%i/currency/%s/adjust' % (user_id, cls.get_currency_id()),
+            cls.mixitupbot + '/users/%i/currency/%s/adjust' % (user_id, cls.get_currency_id()),
             json={"Amount": -amount}, timeout=0.5)
         return resp.status_code == 200
 
     @classmethod
     def AddPoints(cls, user_id, username, amount):
         resp = requests.patch(
-            'http://localhost:8911/api/users/%i/currency/%s/adjust' % (user_id, cls.get_currency_id()),
+            cls.mixitupbot + '/users/%i/currency/%s/adjust' % (user_id, cls.get_currency_id()),
             json={"amount": amount}, timeout=0.5)
         return resp.status_code == 200
 
     @classmethod
-    def AddPointsAll(cls, points_dict):
-        print "not yet implemented: AddPointsAll"
-        return filter(lambda user_id: user_id in cls.viewer_list, points_dict)
+    def AddPointsAll(cls, points_dict):  # TODO: check if users are in viewerlist
+        resp = requests.post(
+            cls.mixitupbot + '/currency/%i/give' % cls.get_currency_id(),
+            json=[{"Amount": amount, "UsernameOrID": user} for user, amount in points_dict.iteritems()], timeout=1.5)
+        if resp.status_code == 200:
+            return []
+        else:
+            return [cls.viewer_list[user] for user in points_dict]
+
+    @classmethod
+    def AddPointsAllAsync(cls, points_dict, callback):
+        thread = Thread(target=cls.AddPointsAllAsync_, args=(points_dict, callback))
+        thread.daemon = True
+        thread.run()
+
+    @classmethod
+    def AddPointsAllAsync_(cls, points_dict, callback):
+        resp = cls.AddPointsAll(points_dict)
+        callback(resp)
+
+    @classmethod
+    def GetTopCurrency(cls, top):
+        resp = requests.get(cls.mixitupbot + '/currency/%i/top?count=%i' % (cls.get_currency_id(), top), timeout=0.5)
+        return resp.json()
+
+    @classmethod
+    def GetRanksAll(cls, users):
+        print "not yet implemented"
+        pass
+
+    @classmethod
+    def GetHoursAll(cls, users):
+        print "not yet implemented"
+        pass
+
+    @classmethod
+    def GetCurrencyUsers(cls, users):
+        print "not yet implemented"
+        pass
+
+    @classmethod
+    def GetPointsAll(cls, users):
+        resp = requests.post(cls.mixitupbot + '/users', json=users, timeout=1)
+        return [[x["Amount"] for x in data["CurrencyAmounts"] if x["ID"] == cls.get_currency_id()][0]
+                for data in resp.json]
+
+    @classmethod
+    def GetRank(cls, user):
+        points = cls.GetPoints(user)
+        max_min_amount = 0
+        high_rank = None
+        for rank, min_amount in cls.ranks.iteritems():
+            if points > min_amount > max_min_amount:
+                high_rank = rank
+                max_min_amount = min_amount
+        return rank
 
     @classmethod
     def IsLive(cls):

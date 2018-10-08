@@ -157,6 +157,11 @@ class MixerChat(object):
         cls.mixer.send(test)
 
     @classmethod
+    def send_whisper(cls, username, message):  # Send a chat message (if s is true, the message will append /me)
+        test = json.dumps(cls.create_method("whisper", username, message))
+        cls.mixer.send(test)
+
+    @classmethod
     def handle_reply(cls, data):
         if cls.id_types[data["id"]] == "auth":
             if data.get("error", None) is not None:
