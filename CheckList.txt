@@ -1,0 +1,91 @@
+Data Object
+properties
++	User
++	UserName
++	Message
+-	RawData
+-	ServiceType
+functions
+-	IsChatMessage()
+-	IsRawData()
+-	IsFromTwitch()
+-	IsFromYoutube()
+-	IsFromMixer()
+-	IsFromDiscord()
+-	IsWhisper()
+-	GetPetem(int id)
+-	GetParamCount()
+
+Currency Object
+-	UserId
+-	UserName
+-	Points
+-	TimeWatched (in minutes)
+-	Rank
+
+Parent Object
+currency
+-	AddPoints(str userid, username, amount)
+-	RemovePoints(str userid, username, amount)
+-	AddPointsAll(dict<str userid, amount>)
+-	AddPointsAllAsync(dict<str userid, amount>, callback)
+-	RemovePointsAll(dict<str userid, amount>)
+-	RemovePointsAllAsync(dict<str userid, amount>, callback)
+-	long = GetPoints(str userid)
+-	long = getHours(str userid)
+-	long??? = GetRank(str userid)
+-	dict<str userid, amount> = GetTopcurrency(int top)
+-	dict<str userid, amount> = GetTopHours(int top)
+-	dict<str userid, amount> = GetPointsAll(List<str userids>)
+-	dict<str userid, amount> = GetRanksAll(List<str userids>)
+-	dict<str userid, amount> = GetHoursAll(List<str userids>)
+-	List<Currency> = GetCurrencyUsers(List<str userids>)
+messages
++	SendStreamMessage(message)
++	SendStreamWhisper(target, message)
+-	SendDiscordMessage(message)
+-	SendDiscordDM(target, message)
++	BroadcastWsEvent(eventname, str jsondata)
+checking permissions
++	HasPermission(userid, permission, info)
+retrieving Viewers
+-	List<str> = GetViewerList()
+-	GetActiveUsers()
+-	GetRandomActiveUser()
+-	GetDisplayName(str userid)
+-	dict<str userids, username> = GetDisplayNames(List<str> userids)
+Cooldown management
++	AddCooldown(scriptname, command, seconds)
++	IsOnCooldown(scriptname, command)
+-	GetCooldownDuration(scriptname, command)
++	AddUserCooldown(scriptname, command, userid, seconds)
++	IsOnUserCooldown(scriptname, command, userid)
+-	GetUserCooldownDuration(scriptname, command, userid)
+OBS
+-	SetOBSCurrentScene(scenename, callback(jsonstr) = null)
+-	SetOBSSourceRander(source, bool render, scenename=null, callback(jsonstr) = null)
+-	StopOBSStreaming(callback(jsonstr) = null)
+-	GetOBSSpecialSources(callback(jsonstr))
+-	SetOBSVolume(source, volume, callback(jsonstr) = null)
+-	GetOBSMute(source, callback(jsonstr))
+-	SetOBSMute(source, bool mute, callback(jsonstr) = null)
+-	ToggleOBSMute(source, callback(jsonstr) = null)
+API Requests
++	str = GetRequest(url, dict headers)
+-	str = PostRequest(url, headers, dict content, bool isJson = True)
+-	str = DeleteRequest(url, headers)
+-	str = PutRequest(url, headers, content, isJson)
+Stream info
++	IsLive()
+GW info
+-	int = GetGwTierLevel(str userid)
+misc
+-	int = GetRandom(min, max)
+-	str = GetStreamingService()
++	GetChannelName()
++	GetCurrencyName()
++	Log(scriptname, msg)
+-	PlaySound(str filepath, volume)
+-	dict<int, str> = GetQueue(max)
+song queue
+... TODO

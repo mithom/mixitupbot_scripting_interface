@@ -130,9 +130,9 @@ class MixerChat(object):
         data = json.loads(message)
         type_ = data["type"]
         if type_ == 'reply':
-            MixerChat.handle_reply(data)
+            MixerChat.handle_reply(data, message)
         elif type_ == 'event':
-            MixerChat.handle_event(data)
+            MixerChat.handle_event(data, message)
 
     @classmethod
     def start(cls):
@@ -162,7 +162,7 @@ class MixerChat(object):
         cls.mixer.send(test)
 
     @classmethod
-    def handle_reply(cls, data):
+    def handle_reply(cls, data, message):
         if cls.id_types[data["id"]] == "auth":
             if data.get("error", None) is not None:
                 msg = "please authorize the correct user, you probably authorized you main account instead of your bot." \
@@ -170,10 +170,7 @@ class MixerChat(object):
                 ctypes.windll.user32.MessageBoxA(0, msg, "wrong account authorized", 0)
 
     @classmethod
-    def handle_event(cls, data):
-        def concat(msg1, msg2):
-            return msg1 + msg2["text"]
-
+    def handle_event(cls, data, message):
         if data['event'] == "ChatMessage":
             if data["data"]["user_id"] not in Parent.viewer_list:
                 userdata = {"username": data["data"]["user_name"],
@@ -181,9 +178,7 @@ class MixerChat(object):
                             "roles": data["data"]["user_roles"]}
                 Parent.add_viewer(userdata["id"], userdata)
             data["data"]["message"]["message"].insert(0, "")
-            msg = reduce(concat, data["data"]["message"]["message"])
-            whisp = "whisper" in data["data"]["message"]["meta"]
-            ScriptHandler.to_process.append(Data(data["data"]["user_id"], data["data"]["user_name"], msg, whisp))
+            ScriptHandler.to_process.append(Data(data["data"]["user_id"], data["data"]["user_name"], data, message))
         if data['event'] == "UserJoin":
             Parent.add_viewer(data["data"]["id"], data["data"])
         if data['event'] == "UserLeave":

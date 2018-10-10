@@ -246,13 +246,18 @@ class Parent(object):
                 del Parent.subscribers[event][client["id"]]
 
 
+def concat(msg1, msg2):
+            return msg1 + msg2["text"]
+
+
 # noinspection PyPep8Naming
 class Data(object):
-    def __init__(self, user, username, msg, whisper=False):
-        self.Message = msg
+    def __init__(self, user, username, json, raw):
+        self.Message = reduce(concat, json["data"]["message"]["message"])
         self.User = user
         self.UserName = username
-        self.Whisper = whisper
+        self.Whisper = "whisper" in json["data"]["message"]["meta"]
+        self.RawData = raw
 
     def IsChatMessage(self):
         return not self.Whisper
