@@ -182,11 +182,11 @@ class Parent(object):
 
     @classmethod
     def GetCooldownDuration(cls, scriptname, commandname):
-        return cls.cooldowns.get(scriptname + commandname, 0)
+        return round((cls.cooldowns.get(scriptname + commandname, 0) - time.time())*100)/100
 
     @classmethod
     def GetUserCooldownDuration(cls, scriptname, commandname, user):
-        return cls.user_cooldowns.get(scriptname + commandname, {}).get(user, 0)
+        return round((cls.user_cooldowns.get(scriptname + commandname, {}).get(user, 0) - time.time())*100)/100
 
     functions = {"Everyone": lambda x, y: True,
                  "Regular": lambda x, y: Parent.GetHours(x) / 60 >= 5,

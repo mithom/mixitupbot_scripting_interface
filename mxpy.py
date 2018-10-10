@@ -124,6 +124,7 @@ class MixerChat(object):
     @staticmethod
     def connect(mixer):
         mixer.send(json.dumps(MixerChat.auth()))
+        connected.set()
 
     @staticmethod
     def on_message(mixer, message):
@@ -154,11 +155,13 @@ class MixerChat(object):
         if message.startswith('/me'):
             message = "/me " + message
         test = json.dumps(cls.create_method("msg", message))
+        connected.wait()
         cls.mixer.send(test)
 
     @classmethod
     def send_whisper(cls, username, message):  # Send a chat message (if s is true, the message will append /me)
         test = json.dumps(cls.create_method("whisper", username, message))
+        connected.wait()
         cls.mixer.send(test)
 
     @classmethod
@@ -279,6 +282,7 @@ class ScriptHandler(object):
 
 
 stopped = Event()
+connected = Event()
 
 
 def unload():
