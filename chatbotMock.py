@@ -252,21 +252,35 @@ def concat(msg1, msg2):
 
 # noinspection PyPep8Naming
 class Data(object):
-    def __init__(self, user, username, json, raw):
-        self.Message = reduce(concat, json["data"]["message"]["message"])
+    def __init__(self, user, username, jsond, raw):
+        self.Message = reduce(concat, jsond["data"].get("message", {}).get("message", ""), "")
         self.User = user
         self.UserName = username
-        self.Whisper = "whisper" in json["data"]["message"]["meta"]
+        self.Whisper = "whisper" in jsond["data"].get("message", {}).get("meta", {})
         self.RawData = raw
+        self.ServiceType = "Mixer"
 
     def IsChatMessage(self):
-        return not self.Whisper
+        return self.Message != ""
 
     def IsWhisper(self):
         return self.Whisper
 
-    def IsFromDiscord(self):  # no discord will be implemented
+    @staticmethod
+    def IsFromDiscord():  # discord might be implemented
         return False
+
+    @staticmethod
+    def IsFromTwitch():  # no twitch will be implemented
+        return False
+
+    @staticmethod
+    def IsFromYoutube():  # no youtube will be implemented
+        return False
+
+    @staticmethod
+    def IsFromMixer():  # at the moment only Mixer will be implemented
+        return True
 
     def GetParamCount(self):
         return len(self.Message.split())

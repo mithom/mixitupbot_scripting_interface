@@ -3,18 +3,18 @@ properties
 +	User
 +	UserName
 +	Message
--	RawData
++	RawData
 -	ServiceType
 functions
--	IsChatMessage()
--	IsRawData()
--	IsFromTwitch()
--	IsFromYoutube()
--	IsFromMixer()
--	IsFromDiscord()
--	IsWhisper()
--	GetPetem(int id)
--	GetParamCount()
++	IsChatMessage()
++	IsRawData()
++	IsFromTwitch()
++	IsFromYoutube()
++	IsFromMixer()
++	IsFromDiscord()
++	IsWhisper()
++	GetParam(int id) // this is now robus
++	GetParamCount()  // this is supposed to error on too big index
 
 Currency Object
 -	UserId
@@ -57,10 +57,10 @@ retrieving Viewers
 Cooldown management
 +	AddCooldown(scriptname, command, seconds)
 +	IsOnCooldown(scriptname, command)
--	GetCooldownDuration(scriptname, command)
++	GetCooldownDuration(scriptname, command)
 +	AddUserCooldown(scriptname, command, userid, seconds)
 +	IsOnUserCooldown(scriptname, command, userid)
--	GetUserCooldownDuration(scriptname, command, userid)
++	GetUserCooldownDuration(scriptname, command, userid)
 OBS
 -	SetOBSCurrentScene(scenename, callback(jsonstr) = null)
 -	SetOBSSourceRander(source, bool render, scenename=null, callback(jsonstr) = null)

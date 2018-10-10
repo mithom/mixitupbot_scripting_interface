@@ -180,7 +180,6 @@ class MixerChat(object):
                             "id": data["data"]["user_id"],
                             "roles": data["data"]["user_roles"]}
                 Parent.add_viewer(userdata["id"], userdata)
-            data["data"]["message"]["message"].insert(0, "")
             ScriptHandler.to_process.append(Data(data["data"]["user_id"], data["data"]["user_name"], data, message))
         if data['event'] == "UserJoin":
             Parent.add_viewer(data["data"]["id"], data["data"])
