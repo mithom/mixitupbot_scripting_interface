@@ -21,7 +21,7 @@ class Parent(object):
     API_Key = None
     stream_online = False
     currency_id = None
-    ranks = None
+    ranks = {}
 
     @classmethod
     def SendStreamMessage(cls, msg):
@@ -50,28 +50,37 @@ class Parent(object):
 
     @classmethod
     def RemovePoints(cls, user_id, username, amount):
-        resp = requests.patch(
-            cls.mixitupbot + '/users/%i/currency/%s/adjust' % (user_id, cls.get_currency_id()),
-            json={"Amount": -amount}, timeout=0.5)
-        return resp.status_code == 200
+        try:
+            resp = requests.patch(
+                cls.mixitupbot + '/users/%i/currency/%s/adjust' % (user_id, cls.get_currency_id()),
+                json={"Amount": -amount}, timeout=0.5)
+            return resp.status_code == 200
+        except requests.exceptions.Timeout:
+            return False
 
     @classmethod
     def AddPoints(cls, user_id, username, amount):
-        resp = requests.patch(
-            cls.mixitupbot + '/users/%i/currency/%s/adjust' % (user_id, cls.get_currency_id()),
-            json={"amount": amount}, timeout=0.5)
-        return resp.status_code == 200
-
+        try:
+            resp = requests.patch(
+                cls.mixitupbot + '/users/%i/currency/%s/adjust' % (user_id, cls.get_currency_id()),
+                json={"amount": amount}, timeout=0.5)
+            return resp.status_code == 200
+        except requests.exceptions.Timeout:
+            return False
+        
     @classmethod
     def AddPointsAll(cls, points_dict):  # TODO: check if users are in viewerlist
-        resp = requests.post(
-            cls.mixitupbot + '/currency/%i/give' % cls.get_currency_id(),
-            json=[{"Amount": amount, "UsernameOrID": user} for user, amount in points_dict.iteritems()], timeout=1.5)
-        if resp.status_code == 200:
-            return []
-        else:
-            return [cls.viewer_list[user] for user in points_dict]
-
+        try:
+            resp = requests.post(
+                cls.mixitupbot + '/currency/%i/give' % cls.get_currency_id(),
+                json=[{"Amount": amount, "UsernameOrID": user} for user, amount in points_dict.iteritems()], timeout=1.5)
+            if resp.status_code == 200:
+                return []
+            else:
+                return [cls.viewer_list[user] for user in points_dict]
+        except requests.exceptions.Timeout:
+            return [False for i in xrange(len(points_dict))]
+        
     @classmethod
     def AddPointsAllAsync(cls, points_dict, callback):
         thread = Thread(target=cls.AddPointsAllAsync_, args=(points_dict, callback))
@@ -85,8 +94,15 @@ class Parent(object):
 
     @classmethod
     def GetTopCurrency(cls, top):
-        resp = requests.get(cls.mixitupbot + '/currency/%i/top?count=%i' % (cls.get_currency_id(), top), timeout=0.5)
-        return resp.json()
+        try:
+            resp = requests.get(cls.mixitupbot + '/currency/%i/top?count=%i' % (cls.get_currency_id(), top), timeout=0.5)
+            data = resp.json()
+        except requests.exceptions.Timeout:
+            return []
+        try:
+            return {user["ID"]:filter(lambda x: x["ID"] == cls.get_currency_id(), user["Currencyamounts"])[0]["Amount"] for user in data}
+        except IndexError:
+            return []
 
     @classmethod
     def GetRanksAll(cls, users):
@@ -104,16 +120,33 @@ class Parent(object):
         pass
 
     @classmethod
+    def GetPoints(cls, user_id):
+        try:
+            data = requests.get(cls.mixitupbot + "/users/" + str(user_id), timeout=0.5).json()
+        except requests.exceptions.Timeout:
+            return 0
+        try:
+            return filter(lambda x: x["ID"] == cls.get_currency_id(), data["Currencyamounts"])[0]["Amount"]
+        except IndexError:
+            return 0
+        
+    @classmethod
     def GetPointsAll(cls, users):
-        resp = requests.post(cls.mixitupbot + '/users', json=users, timeout=1)
-        return [[x["Amount"] for x in data["CurrencyAmounts"] if x["ID"] == cls.get_currency_id()][0]
-                for data in resp.json]
+        try:
+            resp = requests.post(cls.mixitupbot + '/users', json=users, timeout=1)
+        except requests.exceptions.Timeout:
+            return 0
+        try:
+            return [filter(lambda x: x["ID"] == cls.get_currency_id(), data["Currencyamounts"])[0]["Amount"]
+                    for data in resp.json]
+        except IndexError:
+            return 0
 
     @classmethod
     def GetRank(cls, user):
         points = cls.GetPoints(user)
         max_min_amount = 0
-        high_rank = None
+        high_rank = ""
         for rank, min_amount in cls.ranks.iteritems():
             if points > min_amount > max_min_amount:
                 high_rank = rank
@@ -153,14 +186,6 @@ class Parent(object):
     @classmethod
     def GetChannelName(cls):
         return cls.MixerChat.config["channel"]
-
-    @classmethod
-    def GetPoints(cls, user_id):
-        data = requests.get(cls.mixitupbot + "/users/" + str(user_id), timeout=0.5).json()
-        try:
-            return [x["Amount"] for x in data["CurrencyAmounts"] if x["ID"] == cls.get_currency_id()][0]
-        except IndexError:
-            return 0
 
     @classmethod
     def IsOnUserCooldown(cls, scriptname, commandname, user):

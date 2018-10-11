@@ -56,7 +56,10 @@ class MixerApi(object):
         return r.json()["id"]
 
     def get_channel_online(self):
-        r = requests.get(self.v1 + 'channels/%s?fields=online' % self.config["channel"], timeout=1.5)
+        try:
+            r = requests.get(self.v1 + 'channels/%s?fields=online' % self.config["channel"], timeout=1.5)
+        except requests.exceptions.Timeout:
+            return False
         return r.json()["online"]
 
     def get_chat(self, channel_id):

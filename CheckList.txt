@@ -4,7 +4,7 @@ properties
 +	UserName
 +	Message
 +	RawData
--	ServiceType
+-	ServiceType // maybe discord will be added, further done
 functions
 +	IsChatMessage()
 +	IsRawData()
@@ -25,16 +25,16 @@ Currency Object
 
 Parent Object
 currency
--	AddPoints(str userid, username, amount)
--	RemovePoints(str userid, username, amount)
--	AddPointsAll(dict<str userid, amount>)
--	AddPointsAllAsync(dict<str userid, amount>, callback)
++	AddPoints(str userid, username, amount)
++	RemovePoints(str userid, username, amount)
++	AddPointsAll(dict<str userid, amount>)
++	AddPointsAllAsync(dict<str userid, amount>, callback)
 -	RemovePointsAll(dict<str userid, amount>)
 -	RemovePointsAllAsync(dict<str userid, amount>, callback)
--	long = GetPoints(str userid)
++	long = GetPoints(str userid)
 -	long = getHours(str userid)
 -	long??? = GetRank(str userid)
--	dict<str userid, amount> = GetTopcurrency(int top)
++	dict<str userid, amount> = GetTopcurrency(int top)
 -	dict<str userid, amount> = GetTopHours(int top)
 -	dict<str userid, amount> = GetPointsAll(List<str userids>)
 -	dict<str userid, amount> = GetRanksAll(List<str userids>)
