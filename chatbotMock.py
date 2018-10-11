@@ -5,6 +5,7 @@ import time
 import requests
 import json
 from threading import Thread
+import random
 
 
 # noinspection PyPep8Naming,PyUnusedLocal
@@ -105,14 +106,40 @@ class Parent(object):
             return []
 
     @classmethod
+    def GetRank(cls, user):
+        points = cls.GetPoints(user)
+        max_min_amount = 0
+        high_rank = ""
+        for rank, min_amount in cls.ranks.iteritems():
+            if points > min_amount > max_min_amount:
+                high_rank = rank
+                max_min_amount = min_amount
+        return high_rank
+    
+    @classmethod
     def GetRanksAll(cls, users):
         print "not yet implemented"
         pass
 
     @classmethod
+    def GetHours(cls, user_id):
+        try:
+            data = requests.get(cls.mixitupbot + "/users/" + str(user_id), timeout=0.5).json()
+        except requests.exceptions.Timeout:
+            return 0
+        if resp.status_code == 200:
+            return data["ViewingMinutes"] / 60
+        else:
+            return 0
+    
+    @classmethod
     def GetHoursAll(cls, users):
         print "not yet implemented"
-        pass
+        try:
+            resp = requests.post(cls.mixitupbot + '/users', json=users, timeout=1)
+        except requests.exceptions.Timeout:
+            return 0
+        return { data["ID"]: data["ViewingMinutes"]/60 for data in resp.json()}
 
     @classmethod
     def GetCurrencyUsers(cls, users):
@@ -122,12 +149,15 @@ class Parent(object):
     @classmethod
     def GetPoints(cls, user_id):
         try:
-            data = requests.get(cls.mixitupbot + "/users/" + str(user_id), timeout=0.5).json()
+            resp = requests.get(cls.mixitupbot + "/users/" + str(user_id), timeout=0.5)
         except requests.exceptions.Timeout:
             return 0
-        try:
-            return filter(lambda x: x["ID"] == cls.get_currency_id(), data["Currencyamounts"])[0]["Amount"]
-        except IndexError:
+        if resp.status_code == 200:
+            try:
+                return filter(lambda x: x["ID"] == cls.get_currency_id(), resp.json()["Currencyamounts"])[0]["Amount"]
+            except IndexError:
+                return 0
+        else:
             return 0
         
     @classmethod
@@ -138,20 +168,9 @@ class Parent(object):
             return 0
         try:
             return [filter(lambda x: x["ID"] == cls.get_currency_id(), data["Currencyamounts"])[0]["Amount"]
-                    for data in resp.json]
+                    for data in resp.json()]
         except IndexError:
             return 0
-
-    @classmethod
-    def GetRank(cls, user):
-        points = cls.GetPoints(user)
-        max_min_amount = 0
-        high_rank = ""
-        for rank, min_amount in cls.ranks.iteritems():
-            if points > min_amount > max_min_amount:
-                high_rank = rank
-                max_min_amount = min_amount
-        return high_rank
 
     @classmethod
     def IsLive(cls):
@@ -228,14 +247,6 @@ class Parent(object):
                  "Min_Hours": lambda x, y: Parent.GetHours(x) >= y}
 
     @classmethod
-    def GetHours(cls, user_id):
-        data = requests.get(cls.mixitupbot + "/users/" + str(user_id), timeout=0.5).json()
-        try:
-            return data["ViewingMinutes"] / 60
-        except (KeyError, TypeError):
-            return 0
-
-    @classmethod
     def HasPermission(cls, user, permission, extra):
         return cls.functions[permission](user, extra)
 
@@ -249,6 +260,9 @@ class Parent(object):
         resp = requests.get(url, headers=headers, timeout=0.5)
         return json.dumps({"status": resp.status_code,
                            "response": resp.text})
+    @classmethod
+    def GetRandom(cls, mini, maxi):
+        return random.randint(mini, maxi)
 
     @staticmethod
     def on_message(client, server, message):
@@ -259,6 +273,10 @@ class Parent(object):
                     Parent.subscribers[event][client["id"]] = client
                 else:
                     Parent.subscribers[event] = {client["id"]: client}
+
+    @classmethod
+    def GetStreamingService(cls):
+        return "Mixer"
 
     @staticmethod
     def on_client_connect(client, server):

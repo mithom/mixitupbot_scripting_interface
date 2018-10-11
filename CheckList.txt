@@ -32,13 +32,13 @@ currency
 -	RemovePointsAll(dict<str userid, amount>)
 -	RemovePointsAllAsync(dict<str userid, amount>, callback)
 +	long = GetPoints(str userid)
--	long = getHours(str userid)
++	long = getHours(str userid)
 -	long??? = GetRank(str userid)
 +	dict<str userid, amount> = GetTopcurrency(int top)
 -	dict<str userid, amount> = GetTopHours(int top)
--	dict<str userid, amount> = GetPointsAll(List<str userids>)
++	dict<str userid, amount> = GetPointsAll(List<str userids>)
 -	dict<str userid, amount> = GetRanksAll(List<str userids>)
--	dict<str userid, amount> = GetHoursAll(List<str userids>)
++	dict<str userid, amount> = GetHoursAll(List<str userids>)
 -	List<Currency> = GetCurrencyUsers(List<str userids>)
 messages
 +	SendStreamMessage(message)
@@ -80,8 +80,8 @@ Stream info
 GW info
 -	int = GetGwTierLevel(str userid)
 misc
--	int = GetRandom(min, max)
--	str = GetStreamingService()
++	int = GetRandom(min, max)
++	str = GetStreamingService()
 +	GetChannelName()
 +	GetCurrencyName()
 +	Log(scriptname, msg)
