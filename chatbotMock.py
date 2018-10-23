@@ -260,6 +260,28 @@ class Parent(object):
         resp = requests.get(url, headers=headers, timeout=0.5)
         return json.dumps({"status": resp.status_code,
                            "response": resp.text})
+
+    @classmethod
+    def PostRequest(cls, url, headers, content, isJsonContent=True):
+        if isJsoncontent:
+            resp = requests.post(url, headers=headers, json=content, timeout=0.5)
+        else:
+            resp = requests.post(url, headers=headers, data=content, timeout=0.5)
+        return json.dumps({"status": resp.status_code, "response": resp.text})
+
+    @classmethod
+    def DeleteRequest(cls, url, headers):
+        resp = requests.delete(url, headers=headers, timeout=0.5)
+        return json.dumps({"status": resp.status_code, "response": resp.text})
+
+    @classmethod
+    def PutRequest(cls, url, headers, content, isJsonContent=True):
+        if isJsoncontent:
+            resp = requests.put(url, headers=headers, json=content, timeout=0.5)
+        else:
+            resp = requests.put(url, headers=headers, data=content, timeout=0.5)
+        return json.dumps({"status": resp.status_code, "response": resp.text})
+        
     @classmethod
     def GetRandom(cls, mini, maxi):
         return random.randint(mini, maxi)
@@ -331,6 +353,34 @@ class Data(object):
     def GetParam(self, index):
         return self.Message.split()[index]
 
+class Currency(object):  # this should be read only!
+    def __init__(self, userid, username, points, minutes_watched, rank):
+        self.__UserId = userid
+        self.__UserName = username
+        self.__Points = points
+        self.__TimeWatched = minutes_watched
+        self.__Rank = rank
+
+    @property
+    def UserId(self):
+        return self.__UserId
+
+    @property
+    def UserName(self):
+        return self.__UserName
+
+    @property
+    def Points(sefl):
+        return self.__Points
+
+    @property
+    def TimeWatched(self):
+        return self.__TimeWatched
+
+    @property
+    def Rank(self):
+        return self.__Rank
+    
 
 def start(script_name, folder=None):
     def gather_input():

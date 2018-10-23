@@ -72,9 +72,9 @@ OBS
 -	ToggleOBSMute(source, callback(jsonstr) = null)
 API Requests
 +	str = GetRequest(url, dict headers)
--	str = PostRequest(url, headers, dict content, bool isJson = True)
--	str = DeleteRequest(url, headers)
--	str = PutRequest(url, headers, content, isJson)
++	str = PostRequest(url, headers, dict content, bool isJson = True) -> what does it do on false?
++	str = DeleteRequest(url, headers)
++	str = PutRequest(url, headers, content, isJson)
 Stream info
 +	IsLive()
 GW info
