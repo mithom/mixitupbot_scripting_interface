@@ -2,6 +2,7 @@ import importlib
 import sys
 import os
 import time
+sys.path.append(os.path.join(os.path.dirname(__file__), 'lib'))
 import requests
 import json
 from threading import Thread
@@ -353,6 +354,7 @@ class Data(object):
     def GetParam(self, index):
         return self.Message.split()[index]
 
+
 class Currency(object):  # this should be read only!
     def __init__(self, userid, username, points, minutes_watched, rank):
         self.__UserId = userid
@@ -383,10 +385,25 @@ class Currency(object):  # this should be read only!
     
 
 def start(script_name, folder=None):
-    def gather_input():
+    import json
+
+    class MixerMock(object):
+        def send_msg(self, msg):
+            print msg
+
+        def send_whisper(self, msg, target):
+            print '/w', target, msg
+    Parent.MixerChat = MixerMock()
+
+    def gather_input(last_user):
         user = raw_input("username? ")
         if len(user) > 0:
-            messages.append(Data("id:" + user, user, raw_input("msg: ")))
+            jsond={'data': {'message': {'message': [{'text': raw_input("msg: ")}]}}}
+            messages.append(Data("id:" + user, user, jsond, json.dumps(jsond)))
+        elif last_user is not None:
+            jsond = {'data': {'message': {'message': [{'text': raw_input("msg: ")}]}}}
+            messages.append(Data("id:" + last_user, last_user, jsond, json.dumps(jsond)))
+        return user or last_user
 
     sys.path.append(os.path.join(os.path.dirname(__file__), folder or script_name))
     if not script_name.endswith("_StreamlabsSystem"):
@@ -397,9 +414,10 @@ def start(script_name, folder=None):
 
     script.Init()
     messages = []
+    last_user = None
     while True:
         script.Tick()
-        gather_input()
+        last_user = gather_input(last_user)
         if len(messages) > 0:
             script.Execute(messages.pop())
 
