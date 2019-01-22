@@ -11,6 +11,7 @@ import random
 
 # noinspection PyPep8Naming,PyUnusedLocal
 class Parent(object):
+    mocking = False
     viewer_list = {}
     stop = False
     cooldowns = {}
@@ -52,6 +53,8 @@ class Parent(object):
 
     @classmethod
     def RemovePoints(cls, user_id, username, amount):
+        if cls.mocking:
+            return True
         try:
             resp = requests.patch(
                 cls.mixitupbot + '/users/%i/currency/%s/adjust' % (user_id, cls.get_currency_id()),
@@ -62,6 +65,8 @@ class Parent(object):
 
     @classmethod
     def AddPoints(cls, user_id, username, amount):
+        if cls.mocking:
+            return True
         try:
             resp = requests.patch(
                 cls.mixitupbot + '/users/%i/currency/%s/adjust' % (user_id, cls.get_currency_id()),
@@ -72,6 +77,8 @@ class Parent(object):
         
     @classmethod
     def AddPointsAll(cls, points_dict):  # TODO: check if users are in viewerlist
+        if cls.mocking:
+            return []
         try:
             resp = requests.post(
                 cls.mixitupbot + '/currency/%i/give' % cls.get_currency_id(),
@@ -179,8 +186,7 @@ class Parent(object):
 
     @classmethod
     def GetDisplayName(cls, user_id):
-        print cls.viewer_list
-        return cls.viewer_list[user_id]["username"]
+        return cls.viewer_list.get(user_id,{"username":str(user_id)})["username"]
 
     @classmethod
     def GetDisplayNames(cls, user_ids):
@@ -205,6 +211,8 @@ class Parent(object):
 
     @classmethod
     def GetChannelName(cls):
+        if cls.mocking:
+            return "mi_thom"
         return cls.MixerChat.config["channel"]
 
     @classmethod
@@ -249,6 +257,8 @@ class Parent(object):
 
     @classmethod
     def HasPermission(cls, user, permission, extra):
+        if cls.mocking:
+            return random.choice([True, True, True, False])
         return cls.functions[permission](user, extra)
 
     @classmethod
@@ -258,13 +268,13 @@ class Parent(object):
 
     @classmethod
     def GetRequest(cls, url, headers):
-        resp = requests.get(url, headers=headers, timeout=0.5)
+        resp = requests.get(url, headers=headers, timeout=1)
         return json.dumps({"status": resp.status_code,
                            "response": resp.text})
 
     @classmethod
     def PostRequest(cls, url, headers, content, isJsonContent=True):
-        if isJsoncontent:
+        if isJsonContent:
             resp = requests.post(url, headers=headers, json=content, timeout=0.5)
         else:
             resp = requests.post(url, headers=headers, data=content, timeout=0.5)
@@ -277,7 +287,7 @@ class Parent(object):
 
     @classmethod
     def PutRequest(cls, url, headers, content, isJsonContent=True):
-        if isJsoncontent:
+        if isJsonContent:
             resp = requests.put(url, headers=headers, json=content, timeout=0.5)
         else:
             resp = requests.put(url, headers=headers, data=content, timeout=0.5)
@@ -391,13 +401,16 @@ def start(script_name, folder=None):
         def send_msg(self, msg):
             print msg
 
-        def send_whisper(self, msg, target):
+        def send_whisper(self, target, msg):
             print '/w', target, msg
     Parent.MixerChat = MixerMock()
+    Parent.mocking = True
+    Parent.stream_online = True
 
     def gather_input(last_user):
         user = raw_input("username? ")
         if len(user) > 0:
+            Parent.add_viewer('id:'+user, {'username': user})
             jsond={'data': {'message': {'message': [{'text': raw_input("msg: ")}]}}}
             messages.append(Data("id:" + user, user, jsond, json.dumps(jsond)))
         elif last_user is not None:
