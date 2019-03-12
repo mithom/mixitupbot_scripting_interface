@@ -2,7 +2,6 @@ import importlib
 import sys
 import os
 import time
-sys.path.append(os.path.join(os.path.dirname(__file__), 'lib'))
 import requests
 import json
 from threading import Thread
@@ -74,7 +73,7 @@ class Parent(object):
             return resp.status_code == 200
         except requests.exceptions.Timeout:
             return False
-        
+
     @classmethod
     def AddPointsAll(cls, points_dict):  # TODO: check if users are in viewerlist
         if cls.mocking:
@@ -82,14 +81,15 @@ class Parent(object):
         try:
             resp = requests.post(
                 cls.mixitupbot + '/currency/%i/give' % cls.get_currency_id(),
-                json=[{"Amount": amount, "UsernameOrID": user} for user, amount in points_dict.iteritems()], timeout=1.5)
+                json=[{"Amount": amount, "UsernameOrID": user} for user, amount in points_dict.iteritems()],
+                timeout=1.5)
             if resp.status_code == 200:
                 return []
             else:
                 return [cls.viewer_list[user] for user in points_dict]
         except requests.exceptions.Timeout:
             return [False for i in xrange(len(points_dict))]
-        
+
     @classmethod
     def AddPointsAllAsync(cls, points_dict, callback):
         thread = Thread(target=cls.AddPointsAllAsync_, args=(points_dict, callback))
@@ -104,12 +104,14 @@ class Parent(object):
     @classmethod
     def GetTopCurrency(cls, top):
         try:
-            resp = requests.get(cls.mixitupbot + '/currency/%i/top?count=%i' % (cls.get_currency_id(), top), timeout=0.5)
+            resp = requests.get(cls.mixitupbot + '/currency/%i/top?count=%i' % (cls.get_currency_id(), top),
+                                timeout=0.5)
             data = resp.json()
         except requests.exceptions.Timeout:
             return []
         try:
-            return {user["ID"]:filter(lambda x: x["ID"] == cls.get_currency_id(), user["Currencyamounts"])[0]["Amount"] for user in data}
+            return {user["ID"]: filter(lambda x: x["ID"] == cls.get_currency_id(), user["Currencyamounts"])[0]["Amount"]
+                    for user in data}
         except IndexError:
             return []
 
@@ -123,7 +125,7 @@ class Parent(object):
                 high_rank = rank
                 max_min_amount = min_amount
         return high_rank
-    
+
     @classmethod
     def GetRanksAll(cls, users):
         print "not yet implemented"
@@ -132,14 +134,15 @@ class Parent(object):
     @classmethod
     def GetHours(cls, user_id):
         try:
-            data = requests.get(cls.mixitupbot + "/users/" + str(user_id), timeout=0.5).json()
+            resp = requests.get(cls.mixitupbot + "/users/" + str(user_id), timeout=0.5)
+            data = resp.json()
         except requests.exceptions.Timeout:
             return 0
         if resp.status_code == 200:
             return data["ViewingMinutes"] / 60
         else:
             return 0
-    
+
     @classmethod
     def GetHoursAll(cls, users):
         print "not yet implemented"
@@ -147,7 +150,7 @@ class Parent(object):
             resp = requests.post(cls.mixitupbot + '/users', json=users, timeout=1)
         except requests.exceptions.Timeout:
             return 0
-        return { data["ID"]: data["ViewingMinutes"]/60 for data in resp.json()}
+        return {data["ID"]: data["ViewingMinutes"] / 60 for data in resp.json()}
 
     @classmethod
     def GetCurrencyUsers(cls, users):
@@ -167,7 +170,7 @@ class Parent(object):
                 return 0
         else:
             return 0
-        
+
     @classmethod
     def GetPointsAll(cls, users):
         try:
@@ -186,7 +189,7 @@ class Parent(object):
 
     @classmethod
     def GetDisplayName(cls, user_id):
-        return cls.viewer_list.get(user_id,{"username":str(user_id)})["username"]
+        return cls.viewer_list.get(user_id, {"username": str(user_id)})["username"]
 
     @classmethod
     def GetDisplayNames(cls, user_ids):
@@ -235,11 +238,11 @@ class Parent(object):
 
     @classmethod
     def GetCooldownDuration(cls, scriptname, commandname):
-        return round((cls.cooldowns.get(scriptname + commandname, 0) - time.time())*100)/100
+        return round((cls.cooldowns.get(scriptname + commandname, 0) - time.time()) * 100) / 100
 
     @classmethod
     def GetUserCooldownDuration(cls, scriptname, commandname, user):
-        return round((cls.user_cooldowns.get(scriptname + commandname, {}).get(user, 0) - time.time())*100)/100
+        return round((cls.user_cooldowns.get(scriptname + commandname, {}).get(user, 0) - time.time()) * 100) / 100
 
     functions = {"Everyone": lambda x, y: True,
                  "Regular": lambda x, y: Parent.GetHours(x) / 60 >= 5,
@@ -292,7 +295,7 @@ class Parent(object):
         else:
             resp = requests.put(url, headers=headers, data=content, timeout=0.5)
         return json.dumps({"status": resp.status_code, "response": resp.text})
-        
+
     @classmethod
     def GetRandom(cls, mini, maxi):
         return random.randint(mini, maxi)
@@ -323,7 +326,7 @@ class Parent(object):
 
 
 def concat(msg1, msg2):
-            return msg1 + msg2["text"]
+    return msg1 + msg2["text"]
 
 
 # noinspection PyPep8Naming
@@ -392,7 +395,7 @@ class Currency(object):  # this should be read only!
     @property
     def Rank(self):
         return self.__Rank
-    
+
 
 def start(script_name, folder=None):
     import json
@@ -403,6 +406,7 @@ def start(script_name, folder=None):
 
         def send_whisper(self, target, msg):
             print '/w', target, msg
+
     Parent.MixerChat = MixerMock()
     Parent.mocking = True
     Parent.stream_online = True
@@ -410,8 +414,8 @@ def start(script_name, folder=None):
     def gather_input(last_user):
         user = raw_input("username? ")
         if len(user) > 0:
-            Parent.add_viewer('id:'+user, {'username': user})
-            jsond={'data': {'message': {'message': [{'text': raw_input("msg: ")}]}}}
+            Parent.add_viewer('id:' + user, {'username': user})
+            jsond = {'data': {'message': {'message': [{'text': raw_input("msg: ")}]}}}
             messages.append(Data("id:" + user, user, jsond, json.dumps(jsond)))
         elif last_user is not None:
             jsond = {'data': {'message': {'message': [{'text': raw_input("msg: ")}]}}}

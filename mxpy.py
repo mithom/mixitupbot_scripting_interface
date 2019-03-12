@@ -10,14 +10,11 @@ import atexit
 import traceback
 import binascii
 import ctypes
-
-sys.path.append(os.path.join(os.path.dirname(__file__), 'lib'))
 from chatbotMock import Parent, Data
 import OAuth
 import websocket
 import requests
 from websocket_server import WebsocketServer
-
 
 file_path = os.path.dirname(__file__)
 script_path = os.path.join(file_path, 'scripts')
@@ -25,17 +22,33 @@ script_path = os.path.join(file_path, 'scripts')
 
 def init(config):
     OAuth.config = config
-    OAuth.cert = os.path.join(os.path.dirname(__file__), 'script_interface.crt')
-    OAuth.key = os.path.join(os.path.dirname(__file__), 'script_interface.key')
+    OAuth.cert = os.path.join(os.path.dirname(__file__), 'data', 'script_interface.crt')
+    OAuth.key = os.path.join(os.path.dirname(__file__), 'data', 'script_interface.key')
     if not OAuth.start():
         url = "https://127.0.0.1:5555/"
         webbrowser.open(url, new=1, autoraise=True)
     return OAuth.stop()
 
 
+def load_settings(application):
+    global settings
+    success = True
+    try:
+        settings = read_settings()
+    except:
+        success = False
+        settings = application.ask_settings()
+    if success:
+        application.finish_settings()
+
+
+def store_settings(settings_):
+    global settings
+    settings = settings_
+
 def read_settings():
     # Open JSON settings file
-    with codecs.open(os.path.join(file_path, "settingsM.json"), encoding="utf-8-sig", mode="r") as data:
+    with codecs.open(os.path.join(file_path, "data", "settingsM.json"), encoding="utf-8-sig", mode="r") as data:
         return json.load(data)
 
 
@@ -234,7 +247,7 @@ class ScriptHandler(object):
         thread.start()
         Parent.websocket = self.websocket
         Parent.API_Key = self.API_Key
-        
+
     def init(self):
         self.start_websocket()
         for script in self.scripts:
@@ -304,11 +317,16 @@ server = None
 atexit.register(unload)
 
 
-if __name__ == "__main__":
+def start():
+    global script_handler
     Parent.MixerChat = MixerChat
-    opt = read_settings()
-    MixerChat.init(opt)
+    MixerChat.init(settings)
     script_handler = ScriptHandler()
     server = Thread(target=script_handler.scripts_loop)
     server.start()
     MixerChat.start()
+
+
+if __name__ == "__main__":
+    settings = read_settings()
+    start()

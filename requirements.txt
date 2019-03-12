@@ -1,0 +1,6 @@
+requests_oauthlib==1.0.0
+flask==1.0.2
+websocket-client==0.55.0
+requests==2.21.0
+websocket-server==0.4
+pyinstaller

@@ -16,7 +16,7 @@ server = None
 cert = None
 key = None
 
-token_file = os.path.join(os.path.dirname(__file__),"token.json")
+token_file = os.path.join(os.path.dirname(__file__), "token.json")
 
 
 @app.route("/")

@@ -1,6 +1,6 @@
-import database as db
+"""import database as db
 import json
-from lib import websocket
+import websocket
 
 
 def init():
@@ -191,3 +191,9 @@ if __name__ == "__main__":
     opt = read_settings()
     bot = TwitchChat()
     bot.start()
+"""
+def main():
+    pass
+
+if __name__ == '__main__':
+    main()
