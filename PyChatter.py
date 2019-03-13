@@ -11,108 +11,154 @@ import mxpy
 import twpy
 import threading
 import ttk
+import Queue
 
-
-INIT = 'INITIALIZING'
-SERVICE = 'SERVICE SELECTION'
-READ_SETTINGS = 'READING SETTINGS'
-FORM_SETTINGS = 'SETTINGS FORM'
-DONE = 'DONE'
+STORE_SETTINGS = 'store_settings'
 
 
 # noinspection PyAttributeOutsideInit
 class StartUpApplication(Tk.Frame):
     services = {'Mixer': mxpy, 'Twitch': twpy}
 
+    class AskSettings(Tk.Frame):
+        def __init__(self, master, **kwargs):
+            Tk.Frame.__init__(self, master)
+            self.items = {}
+
+            i = 0
+            for key, settings in kwargs.iteritems():
+                label = Tk.Label(self, text=key, justify=Tk.RIGHT)
+                label.grid(pady=5, padx=(10, 15), row=i, column=0)
+
+                entry = Tk.Entry(self, text=key, justify=Tk.LEFT, **settings)
+                entry.grid(pady=5, padx=(15, 10), row=i, column=1)
+                i += 1
+                self.items[label] = entry
+
+    class ProgressBar(Tk.Frame):
+        def __init__(self, master):
+            Tk.Frame.__init__(self, master)
+            self.progressBar = ttk.Progressbar(self, mode='indeterminate')
+            self.progressBar.start()
+            self.progressBar.pack()
+
+    class ServiceSelection(Tk.Frame):
+        def __init__(self, master):
+            Tk.Frame.__init__(self, master)
+            self.selectedService = Tk.StringVar(self)
+            self.selectedService.set('Mixer')
+            self.serviceSelection = Tk.OptionMenu(self, self.selectedService, *StartUpApplication.services.keys())
+            self.serviceSelection.pack(pady=(20, 40))
+
     def __init__(self, master=None):
         Tk.Frame.__init__(self, master)
 
         self.threads = []
-        self.state = INIT
-        print self.state
+        self.queue = []
+        self.last_kwargs = {}
         self.service = None
+        self._frame = None
 
         self.pack(fill=Tk.BOTH)
         self.master.title('ChatbotApplication')
 
         self.content = Tk.Frame(master=self, relief=Tk.RAISED, borderwidth=1)
         self.content.pack(padx=10, pady=10, fill=Tk.BOTH)
-        # create a dropdown select box
-        self.selectedService = Tk.StringVar(self)
-        self.selectedService.set('Mixer')
-        self.serviceSelection = Tk.OptionMenu(self.content, self.selectedService, *self.services.keys())
-        self.serviceSelection.pack(pady=(20, 40))
 
         # create the buttons
-        self.continueButton = Tk.Button(self, text='Continue', command=self.config_service)
-        self.previousButton = Tk.Button(self, text='Previous', state=Tk.DISABLED)
+        self.continueButton = Tk.Button(self, text='Continue')
+        self.previousButton = Tk.Button(self, text='Previous')
         self.quitButton = Tk.Button(self, text='Close', command=self.quit)
 
         self.quitButton.pack(side=Tk.RIGHT, padx=5, pady=5)
         self.previousButton.pack(side=Tk.RIGHT, padx=5, pady=5)
         self.continueButton.pack(side=Tk.RIGHT, padx=5, pady=5)
 
-        master.geometry(
-            '300x150+' + str(master.winfo_screenwidth() / 2 - 150) + '+' + str(master.winfo_screenheight() / 2 - 75))
-        self.state = SERVICE
-        print self.state
+        self.select_service()
+        self.after(100, self.periodic_queue_process)
 
-    def config_service(self):
-        self.state = READ_SETTINGS
-        print self.state
+
+        # master.pack()
+        # master.geometry(
+        #     '300x150+' + str(master.winfo_screenwidth() / 2 - 150) + '+' + str(master.winfo_screenheight() / 2 - 75))
+
+    def periodic_queue_process(self):
+        if len(self.queue) > 0:
+            func = self.queue.pop(0)
+            func[0](*func[1], **func[2])
+        self.after(100, self.periodic_queue_process)
+
+    def add_to_queue(self, func, *args, **kwargs):
+        print 'adding to queue'
+        self.queue.append([func, args, kwargs])
+
+    def switch_frame(self, frame_class, **kwargs):
+        """Destroys current frame and replaces it with a new one."""
+        new_frame = frame_class(self.content, **kwargs)
+        if self._frame is not None:
+            self._frame.destroy()
+        self._frame = new_frame
+        self._frame.pack()
+
+    def select_service(self):
+        self.switch_frame(self.ServiceSelection)
+        self.continueButton.config(command=self.config_service, state=Tk.ACTIVE)
+        self.previousButton.config(state=Tk.DISABLED)
+
+    def config_service(self, force_reload=False):
         self.continueButton.configure(state=Tk.DISABLED)
-        self.service = self.services[self.selectedService.get()]
+        if isinstance(self._frame, self.ServiceSelection):
+            self.service = self.services[self._frame.selectedService.get()]
         func = self.service.load_settings
+        kwargs = {'force_reload': force_reload}
         # noinspection PyTypeChecker
-        fun_thread = threading.Thread(target=func, name=self.selectedService.get(), args=(self,))
+        fun_thread = threading.Thread(target=func, name=self.service.__name__, args=(self,), kwargs=kwargs)
         self.threads.append(fun_thread)
-        self.serviceSelection.destroy()
-        self.previousButton.configure(state=Tk.ACTIVE, command=self.back_to_service_selection)
-        self.progressBar = ttk.Progressbar(self.content, mode='indeterminate')
-        self.progressBar.start()
-        self.progressBar.pack()
+        self.previousButton.configure(state=Tk.ACTIVE, command=self.select_service)
+        self.switch_frame(self.ProgressBar)
         # make sure everything is initialised before thread starts
         fun_thread.start()
 
-    def back_to_service_selection(self):
-        pass
+    def back_to_settings_config(self):
+        if len(self.last_kwargs) > 0:
+            self.ask_settings(**self.last_kwargs)
+        else:
+            self.config_service(force_reload=True)
 
     def ask_settings(self, **kwargs):
-        if self.state != READ_SETTINGS:
-            print 'error state:', self.state
-            raise RuntimeError('ask_settings was called, but state was not READ_SETTINGS')
-        self.state = FORM_SETTINGS
-        print self.state
-        self.progressBar.destroy()
-        self.items = {}
-
-        for key, settings in kwargs.iteritems():
-            label = Tk.Label(self.content, text=key)
-            label.pack(pady=5, padx=(10, 15), side=Tk.TOP, justify=Tk.RIGHT)
-
-            entry = Tk.Entry(self.content, text=key, **settings)
-            entry.pack(pady=5, padx=(15, 10), side=Tk.RIGHT, justify=Tk.LEFT)
-            self.items[label] = entry
+        if not isinstance(self._frame, self.ProgressBar):
+            raise RuntimeError('ask_settings was called, but _frame was not ProgressBar')
+        self.last_kwargs = kwargs
+        self.switch_frame(self.AskSettings, **kwargs)
         self.continueButton.config(state=Tk.ACTIVE, command=self.confirm_settings)
+        self.previousButton.configure(state=Tk.ACTIVE, command=self.select_service)
 
     def confirm_settings(self):
         func = self.service.store_settings
-        fun_thread = threading.Thread(target=func, args=({},), name='save_settings')
-        fun_thread.start()
+        args = {}
+        if not isinstance(self._frame, self.AskSettings):
+            raise RuntimeError('self._frame was not of class self.AskSettings')
+        for label, entry in self._frame.items.iteritems():
+            args[label.cget('text')] = entry.get()
+        fun_thread = threading.Thread(target=func, args=(args,), name=STORE_SETTINGS)
         self.threads.append(fun_thread)
+        fun_thread.start()
         self.finish_settings()
 
     def finish_settings(self):
-        if self.state not in [READ_SETTINGS, FORM_SETTINGS]:
+        if not (isinstance(self._frame, self.AskSettings) or isinstance(self._frame, self.ProgressBar)):
             raise RuntimeError('finish_settings has been called while not working on settings')
-        self.state = DONE
-        print self.state
-        root.quit()
-        for thread in self.threads:
-            if thread != threading.current_thread():
-                thread.join()
-        self.threads = []
-        self.service.start()
+        func = self.service.start
+        fun_thread = threading.Thread(target=func, name='service_start', args=(self,))
+        self.threads.append(fun_thread)
+        fun_thread.start()
+        self.switch_frame(self.ProgressBar)
+
+        self.continueButton.config(state=Tk.DISABLED)
+        self.previousButton.config(command=self.back_to_settings_config)
+
+    def close_window(self):
+        self.quit()
 
 
 if __name__ == "__main__":
@@ -122,8 +168,4 @@ if __name__ == "__main__":
         app.mainloop()
     finally:
         root.destroy()
-        for thread in app.threads:
-            thread.join()
-else:
-    raise ImportError(
-        "this file should not be imported, only executed, extendable code will be in the provided packages")
+    print 'initial thread ended'

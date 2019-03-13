@@ -15,6 +15,7 @@ import OAuth
 import websocket
 import requests
 from websocket_server import WebsocketServer
+import PyChatter
 
 file_path = os.path.dirname(__file__)
 script_path = os.path.join(file_path, 'scripts')
@@ -30,21 +31,28 @@ def init(config):
     return OAuth.stop()
 
 
-def load_settings(application):
+def load_settings(application, force_reload=False):
     global settings
-    success = True
-    try:
-        settings = read_settings()
-    except:
-        success = False
-        settings = application.ask_settings()
-    if success:
-        application.finish_settings()
+    read_success = True
+    if not force_reload:
+        try:
+            settings = read_settings()
+        except:
+            read_success = False
+            application.add_to_queue(application.ask_settings, username={}, client_id={}, client_secret={'show':'*'}, channel={})
+    else:
+        read_success = False
+        application.add_to_queue(application.ask_settings, username={}, client_id={}, client_secret={'show': '*'}, channel={})
+    if read_success:
+        application.add_to_queue(application.finish_settings)
 
 
 def store_settings(settings_):
     global settings
     settings = settings_
+    with codecs.open(os.path.join(file_path, "data", "settingsM.json"), encoding="utf-8-sig", mode="w+") as f:
+        json.dump(settings, f, encoding="utf-8", ensure_ascii=False)
+
 
 def read_settings():
     # Open JSON settings file
@@ -317,9 +325,13 @@ server = None
 atexit.register(unload)
 
 
-def start():
-    global script_handler
+def start(application=None):
+    global script_handler, server
     Parent.MixerChat = MixerChat
+    if application is not None:
+        for thread in application.threads:
+            if thread.name == PyChatter.STORE_SETTINGS:
+                thread.join()
     MixerChat.init(settings)
     script_handler = ScriptHandler()
     server = Thread(target=script_handler.scripts_loop)

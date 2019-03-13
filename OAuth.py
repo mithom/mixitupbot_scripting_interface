@@ -1,5 +1,5 @@
 from requests_oauthlib import OAuth2Session
-from flask import Flask, request, redirect, session, url_for
+from flask import Flask, request, redirect
 from threading import Thread
 import os
 import json
@@ -16,7 +16,7 @@ server = None
 cert = None
 key = None
 
-token_file = os.path.join(os.path.dirname(__file__), "token.json")
+token_file = os.path.join(os.path.dirname(__file__), "data", "token.json")
 
 
 @app.route("/")
