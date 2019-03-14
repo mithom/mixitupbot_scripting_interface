@@ -70,7 +70,7 @@ class StartUpApplication(Tk.Frame):
 
             for header in ['name', 'version', 'author', 'description']:
                 self.add_header(header)
-            self.add_script(self.Script('testScript', '0.0.1', 'mi_thom', 'a fake script'))
+            self.add_script(self.Script('testScript', '0.0.1', 'mi_thom', 'a fake script', extra='extratest'))
 
         class Script:
             def __init__(self, name, version, author, description, **kwargs):
@@ -94,7 +94,7 @@ class StartUpApplication(Tk.Frame):
                 self.labels = [a, b, c, d]
                 for header, field in script.kwargs.iteritems():
                     label = Tk.Label(master, text=field, relief=Tk.FLAT, bg="lightgrey")
-                    label.grid(row=row, column=self.master.parent.get_header_col(header), sticky=Tk.E + Tk.W)
+                    label.grid(row=row, column=master.master.get_header_col(header), sticky=Tk.E + Tk.W)
                     self.labels.append(label)
                 for label in self.labels:
                     label.bind('<Enter>', self.highlight_row)
@@ -117,7 +117,7 @@ class StartUpApplication(Tk.Frame):
         def add_header(self, header):
             col = len(self.headers)
             label = Tk.Label(self.script_content, text=header, font=tkFont.Font(weight=tkFont.BOLD))
-            label.grid(row=0, column=col)
+            label.grid(row=0, column=col, ipadx=2)
             self.headers[header] = len(self.headers)
             return col
 
@@ -126,7 +126,7 @@ class StartUpApplication(Tk.Frame):
                 script_row = self.ScriptRow(self.script_content, script, self.next_row)
                 ttk.Separator(self.script_content, orient=Tk.HORIZONTAL).grid(
                     row=self.next_row + 1, column=0, sticky=Tk.E + Tk.W,
-                    columnspan=self.script_content.grid_size()[0],pady=2
+                    columnspan=self.script_content.grid_size()[0], pady=2
                 )
                 self.scripts.append(script_row)
                 self.next_row += 2
@@ -200,7 +200,6 @@ class StartUpApplication(Tk.Frame):
         self._frame.pack(fill=Tk.BOTH, expand=1)
 
     def select_service(self):
-        # self.switch_frame(self.ServiceSelection)
         self.switch_frame(self.ServiceSelection)
         self.continueButton.config(command=self.config_service, state=Tk.ACTIVE)
         self.previousButton.config(state=Tk.DISABLED, text='Previous')
