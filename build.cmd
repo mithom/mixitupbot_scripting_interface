@@ -1,7 +1,9 @@
-cd .\venv\Scripts\activate
-pyinstaller PyChatter.py --onedir ^
-    --add-data settingsM.json;. ^
+.\venv\Scripts\activate &&^
+pyinstaller PyChatter.py -F ^
     --add-data README.md;. ^
-    --add-data script_interface.key;. ^
-    --add-data script_interface.crt;. ^
-    --noconfirm
+    --add-data data/script_interface.key;data ^
+    --add-data data/script_interface.crt;data ^
+    --noconfirm ^
+    --log-level DEBUG ^
+    --debug &&^
+deactivate
