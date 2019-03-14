@@ -39,10 +39,12 @@ def load_settings(application, force_reload=False):
             settings = read_settings()
         except:
             read_success = False
-            application.add_to_queue(application.ask_settings, username={}, client_id={}, client_secret={'show':'*'}, channel={})
+            application.add_to_queue(application.ask_settings, username={}, client_id={}, client_secret={'show': '*'},
+                                     channel={})
     else:
         read_success = False
-        application.add_to_queue(application.ask_settings, username={}, client_id={}, client_secret={'show': '*'}, channel={})
+        application.add_to_queue(application.ask_settings, username={}, client_id={}, client_secret={'show': '*'},
+                                 channel={})
     if read_success:
         application.add_to_queue(application.finish_settings)
 
@@ -192,8 +194,8 @@ class MixerChat(object):
     def handle_reply(cls, data, message):
         if cls.id_types[data["id"]] == "auth":
             if data.get("error", None) is not None:
-                msg = "please authorize the correct user, you probably authorized you main account instead of your bot." \
-                      "\ndelete token.json and try again!"
+                msg = "please authorize the correct user, you probably authorized you main account instead of your " \
+                      "bot.\ndelete token.json and try again!"
                 ctypes.windll.user32.MessageBoxA(0, msg, "wrong account authorized", 0)
 
     @classmethod
@@ -216,7 +218,8 @@ class MixerChat(object):
 class ScriptHandler(object):
     to_process = []
 
-    def __init__(self):
+    def __init__(self, application):
+        self.application = application
         self.scripts = []
         self.API_Key = binascii.b2a_base64(os.urandom(15))[:-1]
         self.API_Socket = "ws://127.0.0.1:3337/streamlabs"
@@ -258,9 +261,23 @@ class ScriptHandler(object):
 
     def init(self):
         self.start_websocket()
+        failed = []
         for script in self.scripts:
-            script.Parent = Parent
-            script.Init()
+            try:
+                script.Parent = Parent
+                script.Init()
+                self.application.queue.put(self.application.add_loaded_script, self.application.ScriptManager.Script(
+                    script.name,
+                    script.version,
+                    script.author,
+                    script.description
+                ))
+            except Exception:
+                failed.append(script)
+                print "failed to load script"
+                print traceback.format_exc()
+        for script in failed:
+            self.scripts.remove(script)
 
     def scripts_loop(self):
         self.init()
@@ -333,7 +350,7 @@ def start(application=None):
             if thread.name == PyChatter.STORE_SETTINGS:
                 thread.join()
     MixerChat.init(settings)
-    script_handler = ScriptHandler()
+    script_handler = ScriptHandler(application)
     server = Thread(target=script_handler.scripts_loop)
     server.start()
     MixerChat.start()

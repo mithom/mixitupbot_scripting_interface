@@ -61,6 +61,7 @@ def shutdown_server():
     if func is None:
         raise RuntimeError('Not running with the Werkzeug Server')
     func()
+    print 'Oauth server has been stopped'
 
 
 def refresh_acces_token(token_dict):
