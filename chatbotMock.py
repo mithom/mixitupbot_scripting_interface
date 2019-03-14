@@ -253,7 +253,8 @@ class Parent(object):
                  "User_Specific": lambda x, y: y == Parent.viewer_list[x]["username"],
                  "Min_Rank": lambda x, y: Parent.GetPoints(x) >= Parent.ranks[y],
                  "Min_Points": lambda x, y: Parent.GetPoints(x) >= y,
-                 "Min_Hours": lambda x, y: Parent.GetHours(x) >= y}
+                 "Min_Hours": lambda x, y: Parent.GetHours(x) >= y,
+                 "Caster": lambda x, y: True}
 
     @classmethod
     def HasPermission(cls, user, permission, extra):
@@ -406,6 +407,7 @@ def start(script_name, folder=None):
     Parent.MixerChat = MixerMock()
     Parent.mocking = True
     Parent.stream_online = True
+    Parent.add_viewer(Parent.GetChannelName(), {'username': Parent.GetChannelName()})
 
     def gather_input(last_user):
         user = raw_input("username? ")
