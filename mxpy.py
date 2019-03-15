@@ -16,9 +16,12 @@ import websocket
 import requests
 from websocket_server import WebsocketServer
 import PyChatter
+import re
 
 file_path = os.path.dirname(__file__)
-script_path = os.path.join(file_path, 'scripts')
+persistent_path = os.getenv('localappdata')
+OAuth.token_file = os.path.join(persistent_path, "PyChatter", "token.json")
+script_path = None
 
 
 def init(config):
@@ -32,11 +35,12 @@ def init(config):
 
 
 def load_settings(application, force_reload=False):
-    global settings
+    global settings, script_path
     read_success = True
     if not force_reload:
         try:
             settings = read_settings()
+            script_path = settings['script_path']
         except:
             read_success = False
             application.add_to_queue(application.ask_settings, username={}, client_id={}, client_secret={'show': '*'},
@@ -50,15 +54,19 @@ def load_settings(application, force_reload=False):
 
 
 def store_settings(settings_):
-    global settings
+    global settings, script_path
+    script_path = settings_.get('script_path', '')
+    print script_path, '-------------------------------------------------'
     settings = settings_
-    with codecs.open(os.path.join(file_path, "data", "settingsM.json"), encoding="utf-8-sig", mode="w+") as f:
+    if not os.path.isdir(os.path.join(persistent_path, "PyChatter")):
+        os.makedirs(os.path.join(persistent_path, "PyChatter"))
+    with codecs.open(os.path.join(persistent_path, "PyChatter", "settingsM.json"), encoding="utf-8-sig", mode="w+") as f:
         json.dump(settings, f, encoding="utf-8", ensure_ascii=False)
 
 
 def read_settings():
     # Open JSON settings file
-    with codecs.open(os.path.join(file_path, "data", "settingsM.json"), encoding="utf-8-sig", mode="r") as data:
+    with codecs.open(os.path.join(persistent_path, "PyChatter", "settingsM.json"), encoding="utf-8-sig", mode="r") as data:
         return json.load(data)
 
 
@@ -225,14 +233,15 @@ class ScriptHandler(object):
         self.API_Socket = "ws://127.0.0.1:3337/streamlabs"
         self.websocket = None
         self.script_folders = [f for f in os.listdir(script_path) if os.path.isdir(os.path.join(script_path, f))]
+        script_pattern = re.compile(".*_StreamlabsSystem.py")
         for script_folder in self.script_folders:
             content = os.listdir(os.path.join(script_path, script_folder))
-            script_name = script_folder + "_StreamlabsSystem"
-            if script_name + ".py" in content and "UI_Config.json" in content:
+            script_names = filter(script_pattern.match, content)
+            if len(script_names) > 0 and "UI_Config.json" in content:
                 try:
                     specific_scripth_path = os.path.join(script_path, script_folder)
                     self.scripts.append(self.import_by_filename(
-                        os.path.join(specific_scripth_path, script_name + ".py")))
+                        os.path.join(specific_scripth_path, script_names[0])))
                     self.insert_API_Key(specific_scripth_path)
                 except Exception as e:
                     print e.message
@@ -266,16 +275,17 @@ class ScriptHandler(object):
             try:
                 script.Parent = Parent
                 script.Init()
-                self.application.queue.put(self.application.add_loaded_script, self.application.ScriptManager.Script(
-                    script.name,
-                    script.version,
-                    script.author,
-                    script.description
+                self.application.add_to_queue(self.application.add_loaded_script, self.application.ScriptManager.Script(
+                    script.ScriptName,
+                    script.Version,
+                    script.Creator,
+                    script.Description
                 ))
-            except Exception:
+            except Exception as e:
                 failed.append(script)
-                print "failed to load script"
-                print traceback.format_exc()
+                print "failed to load script", str(script)
+                print e.message
+                traceback.print_exc()
         for script in failed:
             self.scripts.remove(script)
 
@@ -336,6 +346,7 @@ def unload():
             except AttributeError:
                 pass
     print "succesfully stopped"
+    MixerChat.mixer.close()
 
 
 server = None
@@ -350,10 +361,15 @@ def start(application=None):
             if thread.name == PyChatter.STORE_SETTINGS:
                 thread.join()
     MixerChat.init(settings)
+    application.add_to_queue(application.show_script_manager)
     script_handler = ScriptHandler(application)
     server = Thread(target=script_handler.scripts_loop)
     server.start()
     MixerChat.start()
+
+
+def shutdown():
+    unload()
 
 
 if __name__ == "__main__":

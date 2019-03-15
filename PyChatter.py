@@ -13,6 +13,7 @@ import threading
 import ttk
 from Queue import Queue
 import tkFont
+import tkFileDialog
 
 STORE_SETTINGS = 'store_settings'
 
@@ -22,12 +23,20 @@ class StartUpApplication(Tk.Frame):
     services = {'Mixer': mxpy, 'Twitch': twpy}
 
     class AskSettings(Tk.Frame):
+        def get_folder(self):
+            self.folder.set(tkFileDialog.askdirectory(parent=self, title='Please select a directory'))
+
         def __init__(self, master, **kwargs):
             Tk.Frame.__init__(self, master)
             self.items = {}
             self.title = 'Settings'
 
-            i = 0
+            self.folder = Tk.StringVar(self)
+            self.folder.set('/')
+            Tk.Label(self, textvariable=self.folder, bg='white', justify=Tk.LEFT).grid(row=0, column=0, columnspan=2)
+            Tk.Button(self, text='select folder', command=self.get_folder).grid(row=0, column=3)
+
+            i = 1
             for key, settings in kwargs.iteritems():
                 label = Tk.Label(self, text=key, justify=Tk.RIGHT)
                 label.grid(pady=5, padx=(10, 15), row=i, column=0)
@@ -239,6 +248,7 @@ class StartUpApplication(Tk.Frame):
             raise RuntimeError('self._frame was not of class self.AskSettings')
         for label, entry in self._frame.items.iteritems():
             args[label.cget('text')] = entry.get()
+        args['script_path'] = self._frame.folder.get()
         fun_thread = threading.Thread(target=func, args=(args,), name=STORE_SETTINGS)
         self.threads.append(fun_thread)
         fun_thread.start()
@@ -273,4 +283,5 @@ if __name__ == "__main__":
         app.mainloop()
     finally:
         root.destroy()
+        app.service.shutdown()
     print 'initial thread ended'

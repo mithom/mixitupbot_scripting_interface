@@ -1,6 +1,0 @@
-{
-    "username": "username",
-    "client_id":"not_so_secret_client_id",
-    "client_secret":"secret_client_secret",
-    "channel": "channelname"
-}

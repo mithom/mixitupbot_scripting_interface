@@ -1,5 +1,6 @@
 .\venv\Scripts\activate &&^
 pyinstaller PyChatter.py -F ^
+    --add-data clr.py;. ^
     --add-data README.md;. ^
     --add-data data/script_interface.key;data ^
     --add-data data/script_interface.crt;data ^
