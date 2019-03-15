@@ -345,7 +345,8 @@ def unload():
             except AttributeError:
                 pass
     print "succesfully stopped"
-    MixerChat.mixer.close()
+    if MixerChat.mixer is not None:
+        MixerChat.mixer.close()
 
 
 server = None

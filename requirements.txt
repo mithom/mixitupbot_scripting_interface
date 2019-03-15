@@ -4,4 +4,3 @@ websocket-client==0.55.0
 requests==2.21.0
 websocket-server==0.4
 pyinstaller
-sqlite3
