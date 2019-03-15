@@ -13,7 +13,6 @@ functions
 +	IsFromMixer()
 +	IsFromDiscord()
 +	IsWhisper()
-+	GetParam(int id) // this is now robus
 +	GetParamCount()  // this is supposed to error on too big index
 
 Currency Object

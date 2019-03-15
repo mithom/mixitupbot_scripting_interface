@@ -9,6 +9,7 @@ This file will be the running program. It will start up in several steps:
 import Tkinter as Tk
 import mxpy
 import twpy
+import mock
 import threading
 import ttk
 from Queue import Queue
@@ -17,10 +18,10 @@ import tkFileDialog
 
 STORE_SETTINGS = 'store_settings'
 
-
+#  TODO: important issue about multiple threads starting scripts when cancelling and retrying
 # noinspection PyAttributeOutsideInit
 class StartUpApplication(Tk.Frame):
-    services = {'Mixer': mxpy, 'Twitch': twpy}
+    services = {'Mixer': mxpy, 'Twitch': twpy, 'ChatMock': mock}
 
     class AskSettings(Tk.Frame):
         def get_folder(self):
@@ -190,7 +191,6 @@ class StartUpApplication(Tk.Frame):
         self.after(100, self.periodic_queue_process)
 
     def add_to_queue(self, func, *args, **kwargs):
-        print 'adding to queue'
         self.queue.put([func, args, kwargs])
 
     def switch_frame(self, frame_class, *args, **kwargs):
@@ -267,7 +267,10 @@ class StartUpApplication(Tk.Frame):
         self.previousButton.config(command=self.back_to_settings_config, text='Cancel')
 
     def show_script_manager(self):
-        self.switch_frame(self.ScriptManager)
+        if isinstance(self._frame, self.ProgressBar) and self._frame.title == 'Authenticating & Loading Scripts':
+            self.switch_frame(self.ScriptManager)
+        else:
+            print 'showing script manager has been ignored'
 
     def add_loaded_script(self, script):
         if not isinstance(self._frame, self.ScriptManager):

@@ -10,7 +10,7 @@ import atexit
 import traceback
 import binascii
 import ctypes
-from chatbotMock import Parent, Data
+from chatbotInterface import Parent, Data
 import OAuth
 import websocket
 import requests
@@ -59,13 +59,15 @@ def store_settings(settings_):
     settings = settings_
     if not os.path.isdir(os.path.join(persistent_path, "PyChatter")):
         os.makedirs(os.path.join(persistent_path, "PyChatter"))
-    with codecs.open(os.path.join(persistent_path, "PyChatter", "settingsM.json"), encoding="utf-8-sig", mode="w+") as f:
+    with codecs.open(os.path.join(persistent_path, "PyChatter", "settingsM.json"), encoding="utf-8-sig",
+                     mode="w+") as f:
         json.dump(settings, f, encoding="utf-8", ensure_ascii=False)
 
 
 def read_settings():
     # Open JSON settings file
-    with codecs.open(os.path.join(persistent_path, "PyChatter", "settingsM.json"), encoding="utf-8-sig", mode="r") as data:
+    with codecs.open(os.path.join(persistent_path, "PyChatter", "settingsM.json"), encoding="utf-8-sig",
+                     mode="r") as data:
         return json.load(data)
 
 
@@ -101,6 +103,112 @@ class MixerApi(object):
 
     def get_user_id(self):
         return requests.get(self.v1 + 'users/search?query=%s' % self.config["username"], timeout=2).json()[0]["id"]
+
+
+class MIU(object):
+    # TODO: increase timeout times and throw error instead of returning 0 (this was for mocking behavior)
+    mixitupbot = "http://localhost:8911/api"
+    currency_name = "LyonBucks"
+
+    def __init__(self):
+        self.currency_id = None
+
+    def remove_points(self, user_id, username, amount):
+        try:
+            resp = requests.patch(
+                self.mixitupbot + '/users/%i/currency/%s/adjust' % (user_id, self._get_currency_id()),
+                json={"Amount": -amount}, timeout=0.5)
+            return resp.status_code == 200
+        except requests.exceptions.Timeout:
+            return False
+
+    def add_points(self, user_id, username, amount):
+        try:
+            resp = requests.patch(
+                self.mixitupbot + '/users/%i/currency/%s/adjust' % (user_id, self._get_currency_id()),
+                json={"amount": amount}, timeout=0.5)
+            return resp.status_code == 200
+        except requests.exceptions.Timeout:
+            return False
+
+    def add_points_all(self, points_dict):
+        try:
+            resp = requests.post(
+                self.mixitupbot + '/currency/%i/give' % self._get_currency_id(),
+                json=[{"Amount": amount, "UsernameOrID": user} for user, amount in points_dict.iteritems()],
+                timeout=1.5)
+            if resp.status_code == 200:
+                return []
+            else:
+                return [Parent.viewer_list[user] for user in points_dict]
+        except requests.exceptions.Timeout:
+            return [False for i in xrange(len(points_dict))]
+
+    def _get_currency_id(self):
+        if self.currency_id is None:
+            resp = requests.get(self.mixitupbot + "/currency", timeout=1)
+            if resp.status_code == 200:
+                currency = filter(lambda x: x["Name"] == self.currency_name, resp.json())[0]  # type: dict
+                self.currency_id = currency["ID"]
+                Parent.ranks = {rank["Name"]: rank["MinimumPoints"] for rank in currency["Ranks"]}
+        return self.currency_id
+
+    def get_top_currency(self, top):
+        try:
+            resp = requests.get(self.mixitupbot + '/currency/%i/top?count=%i' % (self._get_currency_id(), top),
+                                timeout=0.5)
+            data = resp.json()
+        except requests.exceptions.Timeout:
+            return []
+        try:
+            return {
+                user["ID"]: filter(lambda x: x["ID"] == self._get_currency_id(), user["Currencyamounts"])[0]['Amount']
+                for user in data}
+        except IndexError:
+            return []
+
+    def get_hours(self, user_id):
+        try:
+            resp = requests.get(self.mixitupbot + "/users/" + str(user_id), timeout=0.5)
+            data = resp.json()
+        except requests.exceptions.Timeout:
+            return 0
+        if resp.status_code == 200:
+            return data["ViewingMinutes"] / 60
+        else:
+            return 0
+
+    def get_hours_all(self, users):
+        print "not yet implemented"
+        try:
+            resp = requests.post(self.mixitupbot + '/users', json=users, timeout=1)
+        except requests.exceptions.Timeout:
+            return 0
+        return {data["ID"]: data["ViewingMinutes"] / 60 for data in resp.json()}
+
+    def get_points(self, user_id):
+        try:
+            resp = requests.get(self.mixitupbot + "/users/" + str(user_id), timeout=0.5)
+        except requests.exceptions.Timeout:
+            return 0
+        if resp.status_code == 200:
+            try:
+                return filter(lambda x: x["ID"] == self._get_currency_id(), resp.json()["Currencyamounts"])[0]['Amount']
+            except IndexError:
+                return 0
+        else:
+            return 0
+
+    def get_points_all(self, users):
+        try:
+            resp = requests.post(self.mixitupbot + '/users', json=users, timeout=1)
+        except requests.exceptions.Timeout:
+            return 0
+        try:
+            return [filter(lambda x: x["ID"] == self._get_currency_id(), data["Currencyamounts"])[0]['Amount']
+                    for data in resp.json()]
+        except IndexError:
+            return 0
 
 
 class MixerChat(object):
@@ -196,6 +304,10 @@ class MixerChat(object):
         test = json.dumps(cls.create_method("whisper", username, message))
         connected.wait()
         cls.mixer.send(test)
+
+    @classmethod
+    def get_channel_name(cls):
+        return cls.config["channel"]
 
     @classmethod
     def handle_reply(cls, data, message):
@@ -355,7 +467,8 @@ atexit.register(unload)
 
 def start(application=None):
     global script_handler, server
-    Parent.MixerChat = MixerChat
+    Parent.ChatService = MixerChat
+    Parent.DataService = MIU()
     if application is not None:
         for thread in application.threads:
             if thread.name == PyChatter.STORE_SETTINGS:

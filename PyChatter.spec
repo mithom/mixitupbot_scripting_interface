@@ -4,7 +4,7 @@ block_cipher = None
 
 
 a = Analysis(['PyChatter.py'],
-             pathex=['C:\\Users\\mithom\\Desktop\\coding\\mixitupbot_scripting_interface'],
+             pathex=['C:\\Users\\AIR41604\\Desktop\\Thomas Michiels\\mixitupbot_scripting_interface'],
              binaries=[],
              datas=[('clr.py', '.'), ('README.md', '.'), ('data/script_interface.key', 'data'), ('data/script_interface.crt', 'data')],
              hiddenimports=['sqlite3'],
