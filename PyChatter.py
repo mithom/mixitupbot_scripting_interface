@@ -282,6 +282,7 @@ if __name__ == "__main__":
     try:
         app.mainloop()
     finally:
+        if app.service is not None:
+            app.service.shutdown()
         root.destroy()
-        app.service.shutdown()
     print 'initial thread ended'

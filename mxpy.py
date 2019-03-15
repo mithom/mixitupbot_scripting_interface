@@ -56,7 +56,6 @@ def load_settings(application, force_reload=False):
 def store_settings(settings_):
     global settings, script_path
     script_path = settings_.get('script_path', '')
-    print script_path, '-------------------------------------------------'
     settings = settings_
     if not os.path.isdir(os.path.join(persistent_path, "PyChatter")):
         os.makedirs(os.path.join(persistent_path, "PyChatter"))
