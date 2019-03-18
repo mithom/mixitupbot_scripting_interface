@@ -4,8 +4,11 @@ import random
 import sys
 import json
 from threading import Event
+import traceback
 
 have_settings = Event()
+stopped = Event()
+
 
 class ChatMock(object):
     def send_msg(self, msg):
@@ -16,6 +19,7 @@ class ChatMock(object):
 
     def get_channel_name(self):
         return 'mi_thom'
+
 
 class DataMock(object):
     def remove_points(self, user_id, username, amount):
@@ -28,10 +32,11 @@ class DataMock(object):
         return []
 
     def get_points(self, user_id):
-        return int(random.random()*max(Parent.ranks.values()+[500]))
+        return int(random.random() * max(Parent.ranks.values() + [500]))
 
     def get_hours(self, user_id):
-        return int(random.random()*600)
+        return int(random.random() * 600)
+
 
 def start(application):
     global script_name, folder
@@ -62,22 +67,27 @@ def start(application):
 
     script.Init()
     application.add_to_queue(application.add_loaded_script, application.ScriptManager.Script(
-        script.ScriptName,
-        script.Version,
-        script.Creator,
-        script.Description
+        script, load_script_settings(), ['Version', 'Creator', 'Description']
     ))
     messages = []
     last_user = None
-    while True:
-        script.Tick()
-        last_user = gather_input(last_user)
-        if len(messages) > 0:
-            script.Execute(messages.pop())
+    while not stopped.is_set():
+        try:
+            script.Tick()
+            last_user = gather_input(last_user)
+            if len(messages) > 0:
+                script.Execute(messages.pop())
+        except Exception as e:
+            print e.message
+            traceback.print_exc()
+
+
+def load_script_settings():
+    return {}
 
 
 def shutdown():
-    pass
+    stopped.set()
 
 
 def load_settings(application, **_):
@@ -89,4 +99,3 @@ def store_settings(settings):
     script_name = settings['script_name']
     folder = settings.get('script_path', '')
     have_settings.set()
-

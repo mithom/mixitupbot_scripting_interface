@@ -18,6 +18,7 @@ import tkFileDialog
 
 STORE_SETTINGS = 'store_settings'
 
+
 #  TODO: important issue about multiple threads starting scripts when cancelling and retrying
 # noinspection PyAttributeOutsideInit
 class StartUpApplication(Tk.Frame):
@@ -67,48 +68,72 @@ class StartUpApplication(Tk.Frame):
     class ScriptManager(Tk.Frame):
         def __init__(self, master):
             Tk.Frame.__init__(self, master)
+            self.content = Tk.PanedWindow(master=self, orient=Tk.HORIZONTAL)
+            self.content.pack(fill=Tk.BOTH, expand=1, padx=10)
+
             self.title = 'Active Scripts'
             self.scripts = []
             self.headers = {}
             self.next_row = 1  # 0 is the header row
 
-            self.script_content = Tk.Frame(master=self)
-            self.script_content.pack(padx=10, pady=10, fill=Tk.BOTH)
+            self.script_content = Tk.Frame(master=self.content)
+            # self.script_content.pack(padx=10, pady=10, fill=Tk.BOTH)
+            self.content.add(self.script_content, pady=10, sticky=Tk.NSEW)
 
-            self.settings_content = Tk.Frame(master=self, relief=Tk.RAISED, borderwidth=1)
-            self.settings_content.pack(padx=10, pady=10, side=Tk.LEFT, fill=Tk.Y)
-
-            for header in ['name', 'version', 'author', 'description']:
+            self.settings_content = None
+            for header in ['Name']:
                 self.add_header(header)
-            self.add_script(self.Script('testScript', '0.0.1', 'mi_thom', 'a fake script', extra='extratest'))
+            # self.add_script(self.Script('testScript', '0.0.1', 'mi_thom', 'a fake script', extra='extratest'))
+
+        class SettingsPanel(Tk.Frame):
+            def __init__(self, master, script):
+                Tk.Frame.__init__(self, master, relief=Tk.GROOVE, borderwidth=2)
+                self.selected_script = script
+                self.settings = {}
+                self.save_button = Tk.Button(self, text='save', command=self.save_settings)
+                self.close_button = Tk.Button(self, text='close', command=self.close_panel)
+                self.save_button.pack(side=Tk.TOP, expand=1)
+                self.close_button.pack(side=Tk.TOP, expand=1)
+
+            @classmethod
+            def select_script(cls, script_manager, script):
+                if not isinstance(script_manager, StartUpApplication.ScriptManager):
+                    raise RuntimeError('script_manager must be instance of ScriptManager.')
+                if script_manager.settings_content is not None:
+                    script_manager.settings_content.close_panel()
+                script_manager.settings_content = cls(script_manager.content, script)
+                script_manager.update()
+                script_manager.content.add(script_manager.settings_content, sticky=Tk.NSEW)
+
+            def save_settings(self):
+                pass
+
+            def close_panel(self):
+                self.master.master.settings_content = None
+                self.destroy()
+                self.master.master.refresh()
 
         class Script:
-            def __init__(self, name, version, author, description, **kwargs):
-                self.name = name
-                self.version = version
-                self.author = author
-                self.description = description
-                self.kwargs = kwargs
+            # def __init__(self, name, version, author, description, **kwargs):
+            def __init__(self, script_module, settings, atr_list):
+                self.Name = script_module.ScriptName
+                self.attributes = {atr: getattr(script_module, atr) for atr in atr_list}
+                self.settings = settings
 
         class ScriptRow:
             def __init__(self, master, script, row):
                 self.script = script
-                a = Tk.Label(master, text=script.name, relief=Tk.FLAT, bg="lightgrey")
-                b = Tk.Label(master, text=script.version, relief=Tk.FLAT, bg="lightgrey")
-                c = Tk.Label(master, text=script.author, relief=Tk.FLAT, bg="lightgrey")
-                d = Tk.Label(master, text=script.description, relief=Tk.FLAT, bg="lightgrey")
-                a.grid(row=row, column=0, sticky=Tk.E + Tk.W)
-                b.grid(row=row, column=1, sticky=Tk.E + Tk.W)
-                c.grid(row=row, column=2, sticky=Tk.E + Tk.W)
-                d.grid(row=row, column=3, sticky=Tk.E + Tk.W)
-                self.labels = [a, b, c, d]
-                for header, field in script.kwargs.iteritems():
+                name = Tk.Label(master, text=script.Name, relief=Tk.FLAT, bg="lightgrey")
+                name.grid(row=row, column=0, sticky=Tk.EW)
+                self.labels = [name]
+                for header, field in script.attributes.iteritems():
                     label = Tk.Label(master, text=field, relief=Tk.FLAT, bg="lightgrey")
-                    label.grid(row=row, column=master.master.get_header_col(header), sticky=Tk.E + Tk.W)
+                    label.grid(row=row, column=master.master.master.get_header_col(header), sticky=Tk.EW)
                     self.labels.append(label)
                 for label in self.labels:
                     label.bind('<Enter>', self.highlight_row)
                     label.bind('<Leave>', self.default_row)
+                    label.bind('<Button-1>', self.open_settings_func(master.master))
 
             def highlight_row(self, event):
                 for label in self.labels:
@@ -117,6 +142,12 @@ class StartUpApplication(Tk.Frame):
             def default_row(self, event):
                 for label in self.labels:
                     label.config(bg="lightgrey")
+
+            def open_settings_func(self, master):
+                def open_settings(event):
+                    master.master.SettingsPanel.select_script(master.master, self.script)
+
+                return open_settings
 
         def get_header_col(self, header):
             col = self.headers.get(header, None)
@@ -135,11 +166,21 @@ class StartUpApplication(Tk.Frame):
             if isinstance(script, self.Script):
                 script_row = self.ScriptRow(self.script_content, script, self.next_row)
                 ttk.Separator(self.script_content, orient=Tk.HORIZONTAL).grid(
-                    row=self.next_row + 1, column=0, sticky=Tk.E + Tk.W,
+                    row=self.next_row + 1, column=0, sticky=Tk.EW,
                     columnspan=self.script_content.grid_size()[0], pady=2
                 )
                 self.scripts.append(script_row)
                 self.next_row += 2
+                self.refresh()
+
+        def refresh(self):
+            self.content.forget(self.script_content)
+            self.update()
+            if len(self.content.panes()) == 1:
+                self.content.add(self.script_content, before=self.settings_content, pady=10,
+                                 sticky=Tk.NSEW)
+            else:
+                self.content.add(self.script_content, pady=10, sticky=Tk.NSEW)
 
     def __init__(self, master=None):
         Tk.Frame.__init__(self, master)
@@ -200,7 +241,7 @@ class StartUpApplication(Tk.Frame):
             self._frame.destroy()
         if hasattr(new_frame, 'title'):
             self._title.config(text=new_frame.title)
-            self._title.pack()
+            self._title.pack(fill=Tk.BOTH, expand=1)
         else:
             self._title.pack_forget()
             # self.title_place.config(height=0, pady=0)

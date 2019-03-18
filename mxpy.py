@@ -379,6 +379,9 @@ class ScriptHandler(object):
         Parent.websocket = self.websocket
         Parent.API_Key = self.API_Key
 
+    def load_settings(self, script):
+        return {}
+
     def init(self):
         self.start_websocket()
         failed = []
@@ -387,10 +390,7 @@ class ScriptHandler(object):
                 script.Parent = Parent
                 script.Init()
                 self.application.add_to_queue(self.application.add_loaded_script, self.application.ScriptManager.Script(
-                    script.ScriptName,
-                    script.Version,
-                    script.Creator,
-                    script.Description
+                    script, self.load_settings(script), ['Version', 'Creator', 'Description']
                 ))
             except Exception as e:
                 failed.append(script)
