@@ -89,11 +89,13 @@ class StartUpApplication(Tk.Frame):
             def __init__(self, master, script):
                 Tk.Frame.__init__(self, master, relief=Tk.GROOVE, borderwidth=2)
                 self.selected_script = script
-                self.settings = {}
+                self.settings_frame = script.settings_frame
+                # self.settings_frame.config(master=self)
+                self.settings_frame.pack(side=Tk.TOP, fill=Tk.BOTH, expand=1, in_=self)
                 self.save_button = Tk.Button(self, text='save', command=self.save_settings)
                 self.close_button = Tk.Button(self, text='close', command=self.close_panel)
-                self.save_button.pack(side=Tk.TOP, expand=1)
-                self.close_button.pack(side=Tk.TOP, expand=1)
+                self.save_button.pack(side=Tk.LEFT, expand=1)
+                self.close_button.pack(side=Tk.LEFT, expand=1)
 
             @classmethod
             def select_script(cls, script_manager, script):
@@ -106,19 +108,25 @@ class StartUpApplication(Tk.Frame):
                 script_manager.content.add(script_manager.settings_content, sticky=Tk.NSEW)
 
             def save_settings(self):
-                pass
+                application = self.master.master.master.master
+                func = application.service.save_script_settings
+                args = (self.settings_frame,)
+                # noinspection PyTypeChecker
+                fun_thread = threading.Thread(target=func, name=application.service.__name__+'.save_script_settings', args=args)
+                application.threads.append(fun_thread)
 
             def close_panel(self):
+                self.settings_frame.pack_forget()  # don't destroy this window, so we can reuse it later
                 self.master.master.settings_content = None
                 self.destroy()
                 self.master.master.refresh()
 
         class Script:
             # def __init__(self, name, version, author, description, **kwargs):
-            def __init__(self, script_module, settings, atr_list):
+            def __init__(self, script_module, settings_frame, atr_list):
                 self.Name = script_module.ScriptName
                 self.attributes = {atr: getattr(script_module, atr) for atr in atr_list}
-                self.settings = settings
+                self.settings_frame = settings_frame
 
         class ScriptRow:
             def __init__(self, master, script, row):

@@ -17,11 +17,12 @@ import requests
 from websocket_server import WebsocketServer
 import PyChatter
 import re
+import Tkinter as Tk
 
 file_path = os.path.dirname(__file__)
 persistent_path = os.getenv('localappdata')
 OAuth.token_file = os.path.join(persistent_path, "PyChatter", "token.json")
-script_path = None
+script_path = None  # type: str
 
 
 def init(config):
@@ -41,14 +42,15 @@ def load_settings(application, force_reload=False):
         try:
             settings = read_settings()
             script_path = settings['script_path']
+            MIU.currency_name = settings['currency_name']
         except:
             read_success = False
             application.add_to_queue(application.ask_settings, username={}, client_id={}, client_secret={'show': '*'},
-                                     channel={})
+                                     channel={}, currency_name={})
     else:
         read_success = False
         application.add_to_queue(application.ask_settings, username={}, client_id={}, client_secret={'show': '*'},
-                                 channel={})
+                                 channel={}, currency_name={})
     if read_success:
         application.add_to_queue(application.finish_settings)
 
@@ -56,6 +58,7 @@ def load_settings(application, force_reload=False):
 def store_settings(settings_):
     global settings, script_path
     script_path = settings_.get('script_path', '')
+    MIU.currency_name = settings_['currency_name']
     settings = settings_
     if not os.path.isdir(os.path.join(persistent_path, "PyChatter")):
         os.makedirs(os.path.join(persistent_path, "PyChatter"))
@@ -74,6 +77,7 @@ def read_settings():
 class MixerApi(object):
     v1 = 'https://mixer.com/api/v1/'
 
+    # noinspection PyPep8Naming
     def __init__(self, config, OAuthKey):
         self.OAuthKey = OAuthKey
         self.config = config
@@ -105,44 +109,51 @@ class MixerApi(object):
         return requests.get(self.v1 + 'users/search?query=%s' % self.config["username"], timeout=2).json()[0]["id"]
 
 
+# noinspection PyUnusedLocal
 class MIU(object):
-    # TODO: increase timeout times and throw error instead of returning 0 (this was for mocking behavior)
+    class MIUException(Exception):
+        def __init__(self, address, function_name):
+            self.address = MIU.mixitupbot + address
+            self.function_name = function_name
+            Exception.__init__(self, 'unable to contact Mixitupapp developper API: {} from function {}'.format(
+                self.address, self.function_name))
+
     mixitupbot = "http://localhost:8911/api"
-    currency_name = "LyonBucks"
+    currency_name = None  # type: str
 
     def __init__(self):
         self.currency_id = None
 
     def remove_points(self, user_id, username, amount):
-        try:
-            resp = requests.patch(
-                self.mixitupbot + '/users/%i/currency/%s/adjust' % (user_id, self._get_currency_id()),
-                json={"Amount": -amount}, timeout=0.5)
+        path = '/users/%i/currency/%s/adjust' % (user_id, self._get_currency_id())
+        resp = requests.patch(
+            self.mixitupbot + path,
+            json={"Amount": -amount}, timeout=1)
+        if resp.status_code in [200, 403]:
             return resp.status_code == 200
-        except requests.exceptions.Timeout:
-            return False
+        else:
+            raise self.MIUException(path, self.remove_points.__name__)
 
     def add_points(self, user_id, username, amount):
-        try:
+            path = '/users/%i/currency/%s/adjust' % (user_id, self._get_currency_id())
             resp = requests.patch(
-                self.mixitupbot + '/users/%i/currency/%s/adjust' % (user_id, self._get_currency_id()),
-                json={"amount": amount}, timeout=0.5)
-            return resp.status_code == 200
-        except requests.exceptions.Timeout:
-            return False
+                self.mixitupbot + path,
+                json={"amount": amount}, timeout=1)
+            if resp.status_code in [200, 403]:
+                return resp.status_code == 200
+            else:
+                raise self.MIUException(path, self.add_points.__name__)
 
     def add_points_all(self, points_dict):
-        try:
-            resp = requests.post(
-                self.mixitupbot + '/currency/%i/give' % self._get_currency_id(),
-                json=[{"Amount": amount, "UsernameOrID": user} for user, amount in points_dict.iteritems()],
-                timeout=1.5)
-            if resp.status_code == 200:
-                return []
-            else:
-                return [Parent.viewer_list[user] for user in points_dict]
-        except requests.exceptions.Timeout:
-            return [False for i in xrange(len(points_dict))]
+        path = '/currency/%i/give' % self._get_currency_id()
+        resp = requests.post(
+            self.mixitupbot + path,
+            json=[{"Amount": amount, "UsernameOrID": user} for user, amount in points_dict.iteritems()],
+            timeout=2)
+        if resp.status_code == 200:
+            return []
+        else:
+            return [Parent.viewer_list[user] for user in points_dict]
 
     def _get_currency_id(self):
         if self.currency_id is None:
@@ -154,63 +165,55 @@ class MIU(object):
         return self.currency_id
 
     def get_top_currency(self, top):
-        try:
-            resp = requests.get(self.mixitupbot + '/currency/%i/top?count=%i' % (self._get_currency_id(), top),
-                                timeout=0.5)
+        path = '/currency/%i/top?count=%i' % (self._get_currency_id(), top)
+        resp = requests.get(self.mixitupbot + path, timeout=2)
+        if resp.status_code == 200:
             data = resp.json()
-        except requests.exceptions.Timeout:
-            return []
-        try:
+            # noinspection PyTypeChecker
             return {
                 user["ID"]: filter(lambda x: x["ID"] == self._get_currency_id(), user["Currencyamounts"])[0]['Amount']
                 for user in data}
-        except IndexError:
-            return []
+        else:
+            raise self.MIUException(path, self.get_top_currency.__name__)
 
     def get_hours(self, user_id):
-        try:
-            resp = requests.get(self.mixitupbot + "/users/" + str(user_id), timeout=0.5)
-            data = resp.json()
-        except requests.exceptions.Timeout:
-            return 0
+        path = "/users/" + str(user_id)
+        resp = requests.get(self.mixitupbot + path, timeout=1)
         if resp.status_code == 200:
+            data = resp.json()
             return data["ViewingMinutes"] / 60
         else:
-            return 0
+            raise self.MIUException(path, self.get_hours.__name__)
 
     def get_hours_all(self, users):
-        print "not yet implemented"
-        try:
-            resp = requests.post(self.mixitupbot + '/users', json=users, timeout=1)
-        except requests.exceptions.Timeout:
-            return 0
-        return {data["ID"]: data["ViewingMinutes"] / 60 for data in resp.json()}
+        path = '/users'
+        resp = requests.post(self.mixitupbot + path, json=users, timeout=2)
+        if resp.status_code == 200:
+            return {data["ID"]: data["ViewingMinutes"] / 60 for data in resp.json()}
+        else:
+            raise self.MIUException(path, self.get_hours_all.__name__)
 
     def get_points(self, user_id):
-        try:
-            resp = requests.get(self.mixitupbot + "/users/" + str(user_id), timeout=0.5)
-        except requests.exceptions.Timeout:
-            return 0
+        path = "/users/" + str(user_id)
+        resp = requests.get(self.mixitupbot + path, timeout=1)
         if resp.status_code == 200:
-            try:
-                return filter(lambda x: x["ID"] == self._get_currency_id(), resp.json()["Currencyamounts"])[0]['Amount']
-            except IndexError:
-                return 0
+            # noinspection PyTypeChecker
+            return filter(lambda x: x["ID"] == self._get_currency_id(), resp.json()["Currencyamounts"])[0]['Amount']
         else:
-            return 0
+            raise self.MIUException(path, self.get_points.__name__)
 
     def get_points_all(self, users):
-        try:
-            resp = requests.post(self.mixitupbot + '/users', json=users, timeout=1)
-        except requests.exceptions.Timeout:
-            return 0
-        try:
+        path = '/users'
+        resp = requests.post(self.mixitupbot + path, json=users, timeout=2)
+        if resp.status_code == 200:
+            # noinspection PyTypeChecker
             return [filter(lambda x: x["ID"] == self._get_currency_id(), data["Currencyamounts"])[0]['Amount']
                     for data in resp.json()]
-        except IndexError:
-            return 0
+        else:
+            raise self.MIUException(path, self.get_points_all.__name__)
 
 
+# noinspection PyUnusedLocal
 class MixerChat(object):
     id_types = {}
 
@@ -229,6 +232,8 @@ class MixerChat(object):
     @classmethod
     def init(cls, config):
         keys = init(config)
+        if keys is None:
+            return False
         cls.OAuthKey = keys["access_token"]
         cls.config = config
         cls.mixerApi = MixerApi(config, cls.OAuthKey)
@@ -242,7 +247,7 @@ class MixerChat(object):
         cls.mixer.on_close = cls.close
         cls.mixer.on_error = cls.error
         cls.message_id = cls.message_id_gen()
-        # websocket.enableTrace(True)
+        return True
 
     @staticmethod
     def message_id_gen():
@@ -353,19 +358,20 @@ class ScriptHandler(object):
                     specific_scripth_path = os.path.join(script_path, script_folder)
                     self.scripts.append(self.import_by_filename(
                         os.path.join(specific_scripth_path, script_names[0])))
-                    self.insert_API_Key(specific_scripth_path)
+                    self.insert_api_key(specific_scripth_path)
                 except Exception as e:
                     print e.message
                     traceback.print_exc()
             else:
                 print("invalid script folder: " + script_folder)
 
-    def insert_API_Key(self, dir_path):
+    def insert_api_key(self, dir_path):
         api_file = os.path.join(dir_path, "API_KEY.js")
         try:
             with codecs.open(api_file, encoding="utf-8-sig", mode="w") as f:
                 f.write('var API_Key = "{0}";\nvar API_Socket = "{1}";'.format(self.API_Key, self.API_Socket))
-        except:
+        except Exception as e:
+            print e.message
             traceback.print_exc()
 
     def start_websocket(self):
@@ -380,7 +386,7 @@ class ScriptHandler(object):
         Parent.API_Key = self.API_Key
 
     def load_settings(self, script):
-        return {}
+        return Tk.Button(text='test')  # created at root lvl
 
     def init(self):
         self.start_websocket()
@@ -473,18 +479,15 @@ def start(application=None):
         for thread in application.threads:
             if thread.name == PyChatter.STORE_SETTINGS:
                 thread.join()
-    MixerChat.init(settings)
-    application.add_to_queue(application.show_script_manager)
-    script_handler = ScriptHandler(application)
-    server = Thread(target=script_handler.scripts_loop)
-    server.start()
-    MixerChat.start()
+    if MixerChat.init(settings):
+        application.add_to_queue(application.show_script_manager)
+        script_handler = ScriptHandler(application)
+        server = Thread(target=script_handler.scripts_loop)
+        server.start()
+        MixerChat.start()
 
 
 def shutdown():
     unload()
+    OAuth.stop_if_running()
 
-
-if __name__ == "__main__":
-    settings = read_settings()
-    start()

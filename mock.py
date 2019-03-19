@@ -5,6 +5,7 @@ import sys
 import json
 from threading import Event
 import traceback
+import Tkinter as Tk
 
 have_settings = Event()
 stopped = Event()
@@ -83,7 +84,11 @@ def start(application):
 
 
 def load_script_settings():
-    return {}
+    return Tk.Button(text='test')  # created at root lvl
+
+
+def save_script_settings(settings_frame):
+    pass
 
 
 def shutdown():
