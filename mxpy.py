@@ -76,6 +76,8 @@ def read_settings():
 
 class MixerApi(object):
     v1 = 'https://mixer.com/api/v1/'
+    v2 = 'https://mixer.com/api/v2/'
+    verify = True
 
     # noinspection PyPep8Naming
     def __init__(self, config, OAuthKey):
@@ -84,29 +86,36 @@ class MixerApi(object):
 
     def get_current_user_id(self):
         headers = {'Authorization': "Bearer " + self.OAuthKey or self.config["authkey"]}
-        r = requests.get(self.v1 + 'users/current', headers=headers, timeout=1)
+        r = requests.get(self.v1 + 'users/current', headers=headers, timeout=1, verify=self.verify)
         return r.json()["id"]
 
     def get_channel_id(self):
-        r = requests.get(self.v1 + 'channels/%s?fields=id' % self.config["channel"], timeout=1)
+        r = requests.get(self.v1 + 'channels/%s?fields=id' % self.config["channel"], timeout=1, verify=self.verify)
         return r.json()["id"]
 
     def get_channel_online(self):
         try:
-            r = requests.get(self.v1 + 'channels/%s?fields=online' % self.config["channel"], timeout=1.5)
+            r = requests.get(self.v1 + 'channels/%s?fields=online' % self.config["channel"], timeout=1.5, verify=self.verify)
         except requests.exceptions.Timeout:
             return False
         return r.json()["online"]
 
     def get_chat(self, channel_id):
         headers = {'Authorization': "Bearer " + self.OAuthKey}
-        r = requests.get(self.v1 + 'chats/%i' % channel_id, headers=headers, timeout=1)
+        r = requests.get(self.v1 + 'chats/%i' % channel_id, headers=headers, timeout=1, verify=self.verify)
         data = r.json()
         return random.choice(data["endpoints"]), data.get("authkey", None), \
                data.get("roles", []), data.get("permissions", [])
 
     def get_user_id(self):
-        return requests.get(self.v1 + 'users/search?query=%s' % self.config["username"], timeout=2).json()[0]["id"]
+        return requests.get(self.v1 + 'users/search?query=%s' % self.config["username"], timeout=2, verify=self.verify).json()[0]["id"]
+
+    def get_chatter_list(self):
+        resp = requests.get(self.v2 + 'chats/{}/users?limit=50'.format(MixerChat.channel_id), timeout=5, verify=self.verify)
+        yield resp.json()
+        while resp.links.has_key('next'):
+            resp = requests.get(resp.links['next']['url'], timeout=5, verify=self.verify)
+            yield resp.json()
 
 
 # noinspection PyUnusedLocal
@@ -270,7 +279,6 @@ class MixerChat(object):
     @staticmethod
     def connect(mixer):
         mixer.send(json.dumps(MixerChat.auth()))
-        connected.set()
 
     @staticmethod
     def on_message(mixer, message):
@@ -309,6 +317,7 @@ class MixerChat(object):
         test = json.dumps(cls.create_method("whisper", username, message))
         connected.wait()
         cls.mixer.send(test)
+        print 'send whisper', username, message
 
     @classmethod
     def get_channel_name(cls):
@@ -335,6 +344,12 @@ class MixerChat(object):
             Parent.add_viewer(data["data"]["id"], data["data"])
         if data['event'] == "UserLeave":
             del Parent.viewer_list[data["data"]["id"]]
+        if data['event'] == "WelcomeEvent":
+            for user_list in cls.mixerApi.get_chatter_list():
+                for user in user_list:
+                    user = {'id': user['userId'], 'username':user['username'], 'roles': user['userRoles']}
+                    Parent.add_viewer(user['id'], user)
+            connected.set()
         """else:
             print data"""
 

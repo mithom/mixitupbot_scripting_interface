@@ -26,8 +26,11 @@ class Parent(object):
 
     @classmethod
     def SendStreamWhisper(cls, user, msg):
-        username = cls.viewer_list[user]["username"]
-        cls.ChatService.send_whisper(username, msg)
+        if user in cls.viewer_list:
+            username = cls.viewer_list[user]["username"]
+            cls.ChatService.send_whisper(username, msg)
+        else:
+            cls.ChatService.send_whisper(user, msg)
         cls.stop = True
 
     @classmethod
