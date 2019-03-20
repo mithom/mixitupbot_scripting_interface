@@ -48,9 +48,9 @@ messages
 checking permissions
 +	HasPermission(userid, permission, info)
 retrieving Viewers
--	List<str> = GetViewerList()
++	List<str> = GetViewerList()
 -	GetActiveUsers()
--	GetRandomActiveUser()
++	GetRandomActiveUser()
 -	GetDisplayName(str userid)
 -	dict<str userids, username> = GetDisplayNames(List<str> userids)
 Cooldown management

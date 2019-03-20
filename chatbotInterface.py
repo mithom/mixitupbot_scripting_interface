@@ -1,8 +1,11 @@
 import time
 import requests
 import json
-from threading import Thread
+from threading import Thread, Event
 import random
+import sounddevice as sd
+import soundfile as sf
+import Queue
 
 
 # noinspection PyPep8Naming,PyUnusedLocal
@@ -13,6 +16,7 @@ class Parent(object):
     user_cooldowns = {}
     ChatService = None
     DataService = None
+    DiscordService = None
     websocket = None
     subscribers = {}
     API_Key = None
@@ -38,11 +42,12 @@ class Parent(object):
 
     @classmethod
     def SendDiscordMessage(cls, msg):
-        raise NotImplementedError
+        cls.DiscordService.send_msg(msg)
+        cls.stop = True
 
     @classmethod
     def SendDiscordDM(cls, target, msg):
-        raise NotImplementedError
+        cls.DiscordService.send_dm(target, msg)
 
     @classmethod
     def BroadcastWsEvent(cls, eventname, jsondata):
@@ -65,7 +70,7 @@ class Parent(object):
         if hasattr(cls.DataService, 'add_points_all'):
             return cls.DataService.add_points_all(points_dict)
         else:
-            pass  # TODO: implement based on add_points
+            raise NotImplementedError  # TODO: implement based on add_points
 
     @classmethod
     def AddPointsAllAsync(cls, points_dict, callback):
@@ -83,11 +88,24 @@ class Parent(object):
 
     @classmethod
     def RemovePointsAll(cls, points_dict):
-        raise NotImplementedError
+        if hasattr(cls.DataService, 'remove_points_all'):
+            cls.DataService.remove_points_all(points_dict)
+        else:
+            raise NotImplementedError  # TODO: implement based on remove_points
 
     @classmethod
     def RemovePointsAllAsync(cls, points_dict, callback):
-        raise NotImplementedError
+        if hasattr(cls.DataService, 'remove_points_all_async'):
+            return cls.DataService.remove_points_all_async(points_dict, callback)
+        else:
+            thread = Thread(target=cls._RemovePointsAllAsync, args=(points_dict, callback))
+            thread.daemon = True
+            thread.run()
+
+    @classmethod
+    def _RemovePointsAllAsync(cls, points_dict, callback):
+        resp = cls.AddPointsAll(points_dict)
+        callback(resp)
 
     @classmethod
     def GetPoints(cls, user_id):
@@ -114,33 +132,38 @@ class Parent(object):
 
     @classmethod
     def GetTopHours(cls, top):
-        raise NotImplementedError
+        return cls.DataService.get_top_hours(top)
 
     @classmethod
     def GetPointsAll(cls, users):
+        # FIXME: from System.Collections.Generic import List
         if hasattr(cls.DataService, 'get_points_all'):
             return cls.DataService.get_points_all(users)
         else:
-            pass  # TODO: implement on basis of get_points
+            raise NotImplementedError  # TODO: implement on basis of get_points
 
     @classmethod
     def GetRanksAll(cls, users):
+        # FIXME: from System.Collections.Generic import List
         raise NotImplementedError
 
     @classmethod
     def GetHoursAll(cls, users):
+        # FIXME: from System.Collections.Generic import List
         if hasattr(cls.DataService, 'get_hours_all'):
             return cls.DataService.get_hours_all(users)
         else:
-            pass # TODO: implement on basis of GetHours
+            raise NotImplementedError  # TODO: implement on basis of GetHours
 
     @classmethod
     def GetCurrencyUsers(cls, users):
+        # FIXME: from System.Collections.Generic import List
         raise NotImplementedError
 
     #######################
     # Permissions
     #######################
+    # TODO: use ChatService for roles
     functions = {"Everyone": lambda x, y: True,
                  "Regular": lambda x, y: Parent.GetHours(x) / 60 >= 5,
                  "Subscriber": lambda x, y: "Subscriber" in Parent.viewer_list[x]["roles"],
@@ -166,20 +189,28 @@ class Parent(object):
     def GetViewerList(cls):
         return [user_data["username"] for user_data in cls.viewer_list.itervalues()]
 
+    # TODO: differentiate from GetViewerList, databse with user activity
     @classmethod
     def GetActiveUsers(cls):  # TODO: filter active
         return [user_data["username"] for user_data in cls.viewer_list.itervalues()]
 
     @classmethod
     def GetRandomActiveViewer(cls):
-        raise NotImplementedError
+        if hasattr(cls.ChatService, 'get_random_active_viewer'):
+            return cls.ChatService.get_random_active_viewer()
+        else:
+            return random.choice(cls.GetActiveUsers())
 
     @classmethod
     def GetDisplayName(cls, user_id):
-        return cls.viewer_list.get(user_id, {"username": str(user_id)})["username"]
+        if user_id in cls.viewer_list:
+            return cls.viewer_list[user_id]["username"]
+        else:
+            cls.ChatService.get_display_name(user_id)
 
     @classmethod
     def GetDisplayNames(cls, user_ids):
+        # FIXME: from System.Collections.Generic import List
         return [cls.viewer_list[user_id]["username"] for user_id in user_ids]
 
     #######################
@@ -276,11 +307,43 @@ class Parent(object):
         print "log from " + script_name + ": " + log
 
     @classmethod
-    def PlaySound(filepath, volume):
-        raise NotImplementedError
+    def PlaySound(cls, filepath, volume):
+        blocksize = 20
+        q = Queue.Queue(maxsize=2048)
+        f = sf.SoundFile(filepath).__enter__()
+
+        def sound_callback(outdata, frames, time, status):
+            data = q.get_nowait()
+            if len(data) < len(outdata):
+                outdata[:len(data)] = data
+                outdata[len(data):] = b'\x00' * (len(outdata) - len(data))
+                f.__exit__()
+                raise sd.CallbackStop
+            else:
+                outdata[:] = data
+
+        data = None
+        for _ in range(2048):
+            data = f.buffer_read(blocksize, dtype='float32')
+            if not data:
+                break
+            q.put_nowait(data)  # Pre-fill queue
+        stream = sd.RawOutputStream(samplerate=f.samplerate, blocksize=blocksize, dtype='float32',
+                                    callback=sound_callback, channels=f.channels)
+        def read_sound_to_stream():
+            data=True
+            with stream:
+                timeout = blocksize * 2048.0 / f.samplerate
+                while data:
+                    data = f.buffer_read(blocksize, dtype='float32')
+                    q.put(data, timeout=timeout)
+
+        thread = Thread(target=read_sound_to_stream)
+        thread.daemon = True
+        thread.start()
 
     @classmethod
-    def GetQueue(cls, max):
+    def GetQueue(cls, max_nb):
         raise NotImplementedError
 
     #######################

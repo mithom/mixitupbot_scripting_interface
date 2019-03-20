@@ -95,7 +95,8 @@ class MixerApi(object):
 
     def get_channel_online(self):
         try:
-            r = requests.get(self.v1 + 'channels/%s?fields=online' % self.config["channel"], timeout=1.5, verify=self.verify)
+            r = requests.get(self.v1 + 'channels/%s?fields=online' % self.config["channel"], timeout=1.5,
+                             verify=self.verify)
         except requests.exceptions.Timeout:
             return False
         return r.json()["online"]
@@ -108,12 +109,15 @@ class MixerApi(object):
                data.get("roles", []), data.get("permissions", [])
 
     def get_user_id(self):
-        return requests.get(self.v1 + 'users/search?query=%s' % self.config["username"], timeout=2, verify=self.verify).json()[0]["id"]
+        return requests.get(
+            self.v1 + 'users/search?query=%s' % self.config["username"], timeout=2, verify=self.verify
+        ).json()[0]["id"]
 
     def get_chatter_list(self):
-        resp = requests.get(self.v2 + 'chats/{}/users?limit=50'.format(MixerChat.channel_id), timeout=5, verify=self.verify)
+        resp = requests.get(self.v2 + 'chats/{}/users?limit=50'.format(MixerChat.channel_id), timeout=5,
+                            verify=self.verify)
         yield resp.json()
-        while resp.links.has_key('next'):
+        while 'next' in resp.links:
             resp = requests.get(resp.links['next']['url'], timeout=5, verify=self.verify)
             yield resp.json()
 
@@ -144,14 +148,14 @@ class MIU(object):
             raise self.MIUException(path, self.remove_points.__name__)
 
     def add_points(self, user_id, username, amount):
-            path = '/users/%i/currency/%s/adjust' % (user_id, self._get_currency_id())
-            resp = requests.patch(
-                self.mixitupbot + path,
-                json={"amount": amount}, timeout=1)
-            if resp.status_code in [200, 403]:
-                return resp.status_code == 200
-            else:
-                raise self.MIUException(path, self.add_points.__name__)
+        path = '/users/%i/currency/%s/adjust' % (user_id, self._get_currency_id())
+        resp = requests.patch(
+            self.mixitupbot + path,
+            json={"amount": amount}, timeout=1)
+        if resp.status_code in [200, 403]:
+            return resp.status_code == 200
+        else:
+            raise self.MIUException(path, self.add_points.__name__)
 
     def add_points_all(self, points_dict):
         path = '/currency/%i/give' % self._get_currency_id()
@@ -347,7 +351,7 @@ class MixerChat(object):
         if data['event'] == "WelcomeEvent":
             for user_list in cls.mixerApi.get_chatter_list():
                 for user in user_list:
-                    user = {'id': user['userId'], 'username':user['username'], 'roles': user['userRoles']}
+                    user = {'id': user['userId'], 'username': user['username'], 'roles': user['userRoles']}
                     Parent.add_viewer(user['id'], user)
             connected.set()
         """else:
@@ -505,4 +509,3 @@ def start(application=None):
 def shutdown():
     unload()
     OAuth.stop_if_running()
-
