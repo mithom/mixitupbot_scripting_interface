@@ -33,7 +33,7 @@ currency
 +	long = GetPoints(str userid)
 +	long = getHours(str userid)
 -	long??? = GetRank(str userid)
-+	dict<str userid, amount> = GetTopcurrency(int top)
++	dict<str userid, amount> = GetTopCurrency(int top)
 -	dict<str userid, amount> = GetTopHours(int top)
 +	dict<str userid, amount> = GetPointsAll(List<str userids>)
 -	dict<str userid, amount> = GetRanksAll(List<str userids>)

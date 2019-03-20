@@ -19,6 +19,9 @@ class Parent(object):
     stream_online = False
     ranks = {}
 
+    #######################
+    # Messages
+    #######################
     @classmethod
     def SendStreamMessage(cls, msg):
         cls.ChatService.send_msg(msg)
@@ -34,16 +37,28 @@ class Parent(object):
         cls.stop = True
 
     @classmethod
-    def Log(cls, script_name, log):
-        print "log from " + script_name + ": " + log
+    def SendDiscordMessage(cls, msg):
+        raise NotImplementedError
+
+    @classmethod
+    def SendDiscordDM(cls, target, msg):
+        raise NotImplementedError
+
+    @classmethod
+    def BroadcastWsEvent(cls, eventname, jsondata):
+        for client_id, client in Parent.subscribers.get(eventname, {}).iteritems():
+            cls.websocket.send_message(client, json.dumps({"event": eventname, "data": jsondata}))
+
+    #######################
+    # Currency
+    #######################
+    @classmethod
+    def AddPoints(cls, user_id, username, amount):
+        return cls.DataService.add_points(user_id, username, amount)
 
     @classmethod
     def RemovePoints(cls, user_id, username, amount):
         return cls.DataService.remove_points(user_id, username, amount)
-
-    @classmethod
-    def AddPoints(cls, user_id, username, amount):
-        return cls.DataService.add_points(user_id, username, amount)
 
     @classmethod
     def AddPointsAll(cls, points_dict):
@@ -57,21 +72,33 @@ class Parent(object):
         if hasattr(cls.DataService, 'add_points_all_async'):
             return cls.DataService.add_points_all_async(points_dict, callback)
         else:
-            thread = Thread(target=cls.AddPointsAllAsync_, args=(points_dict, callback))
+            thread = Thread(target=cls._AddPointsAllAsync, args=(points_dict, callback))
             thread.daemon = True
             thread.run()
 
     @classmethod
-    def AddPointsAllAsync_(cls, points_dict, callback):
+    def _AddPointsAllAsync(cls, points_dict, callback):
         resp = cls.AddPointsAll(points_dict)
         callback(resp)
 
     @classmethod
-    def GetTopCurrency(cls, top):
-        return cls.DataService.get_top_currency(top)
+    def RemovePointsAll(cls, points_dict):
+        raise NotImplementedError
 
     @classmethod
-    def GetRank(cls, user):
+    def RemovePointsAllAsync(cls, points_dict, callback):
+        raise NotImplementedError
+
+    @classmethod
+    def GetPoints(cls, user_id):
+        return cls.DataService.get_points(user_id)
+
+    @classmethod
+    def GetHours(cls, user_id):
+        return cls.DataService.get_hours(user_id)
+
+    @classmethod
+    def GetRank(cls, user):  # TODO: check for non-currency ranks
         points = cls.DataService.get_points(user)
         max_min_amount = 0
         high_rank = ""
@@ -82,13 +109,23 @@ class Parent(object):
         return high_rank
 
     @classmethod
-    def GetRanksAll(cls, users):
-        print "not yet implemented"
-        pass
+    def GetTopCurrency(cls, top):
+        return cls.DataService.get_top_currency(top)
 
     @classmethod
-    def GetHours(cls, user_id):
-        return cls.DataService.get_hours(user_id)
+    def GetTopHours(cls, top):
+        raise NotImplementedError
+
+    @classmethod
+    def GetPointsAll(cls, users):
+        if hasattr(cls.DataService, 'get_points_all'):
+            return cls.DataService.get_points_all(users)
+        else:
+            pass  # TODO: implement on basis of get_points
+
+    @classmethod
+    def GetRanksAll(cls, users):
+        raise NotImplementedError
 
     @classmethod
     def GetHoursAll(cls, users):
@@ -99,79 +136,11 @@ class Parent(object):
 
     @classmethod
     def GetCurrencyUsers(cls, users):
-        print "not yet implemented"
-        pass
+        raise NotImplementedError
 
-    @classmethod
-    def GetPoints(cls, user_id):
-        return cls.DataService.get_points(user_id)
-
-    @classmethod
-    def GetPointsAll(cls, users):
-        if hasattr(cls.DataService, 'get_points_all'):
-            return cls.DataService.get_points_all(users)
-        else:
-            pass  # TODO: implement on basis of get_points
-
-    @classmethod
-    def IsLive(cls):
-        return cls.stream_online
-
-    @classmethod
-    def GetDisplayName(cls, user_id):
-        return cls.viewer_list.get(user_id, {"username": str(user_id)})["username"]
-
-    @classmethod
-    def GetDisplayNames(cls, user_ids):
-        return [cls.viewer_list[user_id]["username"] for user_id in user_ids]
-
-    @classmethod
-    def GetActiveUsers(cls):  # TODO: filter active
-        return [user_data["username"] for user_data in cls.viewer_list.itervalues()]
-
-    @classmethod
-    def GetViewerList(cls):
-        return [user_data["username"] for user_data in cls.viewer_list.itervalues()]
-
-    # to make the mock work
-    @classmethod
-    def add_viewer(cls, user_id, user_data):
-        cls.viewer_list[user_id] = user_data
-
-    @classmethod
-    def GetCurrencyName(cls):
-        return cls.DataService.currency_name
-
-    @classmethod
-    def GetChannelName(cls):
-        return cls.ChatService.get_channel_name()
-
-    @classmethod
-    def IsOnUserCooldown(cls, scriptname, commandname, user):
-        return time.time() < cls.user_cooldowns.get(scriptname + commandname, {}).get(user, 0)
-
-    @classmethod
-    def IsOnCooldown(cls, scriptname, commandname):
-        return time.time() < cls.cooldowns.get(scriptname + commandname, 0)
-
-    @classmethod
-    def AddUserCooldown(cls, scriptname, commandname, user, seconds):
-        if scriptname + commandname not in cls.user_cooldowns:
-            cls.user_cooldowns[scriptname + commandname] = {}
-        cls.user_cooldowns[scriptname + commandname][user] = time.time() + seconds
-
-    @classmethod
-    def AddCooldown(cls, scriptname, commandname, seconds):
-        cls.cooldowns[scriptname + commandname] = time.time() + seconds
-
-    @classmethod
-    def GetCooldownDuration(cls, scriptname, commandname):
-        return round((cls.cooldowns.get(scriptname + commandname, 0) - time.time()) * 100) / 100
-
-    @classmethod
-    def GetUserCooldownDuration(cls, scriptname, commandname, user):
-        return round((cls.user_cooldowns.get(scriptname + commandname, {}).get(user, 0) - time.time()) * 100) / 100
-
+    #######################
+    # Permissions
+    #######################
     functions = {"Everyone": lambda x, y: True,
                  "Regular": lambda x, y: Parent.GetHours(x) / 60 >= 5,
                  "Subscriber": lambda x, y: "Subscriber" in Parent.viewer_list[x]["roles"],
@@ -190,11 +159,65 @@ class Parent(object):
     def HasPermission(cls, user, permission, extra):
         return cls.functions[permission](user, extra)
 
+    #######################
+    # Retrieving Viewers
+    #######################
     @classmethod
-    def BroadcastWsEvent(cls, eventname, jsondata):
-        for client_id, client in Parent.subscribers.get(eventname, {}).iteritems():
-            cls.websocket.send_message(client, json.dumps({"event": eventname, "data": jsondata}))
+    def GetViewerList(cls):
+        return [user_data["username"] for user_data in cls.viewer_list.itervalues()]
 
+    @classmethod
+    def GetActiveUsers(cls):  # TODO: filter active
+        return [user_data["username"] for user_data in cls.viewer_list.itervalues()]
+
+    @classmethod
+    def GetRandomActiveViewer(cls):
+        raise NotImplementedError
+
+    @classmethod
+    def GetDisplayName(cls, user_id):
+        return cls.viewer_list.get(user_id, {"username": str(user_id)})["username"]
+
+    @classmethod
+    def GetDisplayNames(cls, user_ids):
+        return [cls.viewer_list[user_id]["username"] for user_id in user_ids]
+
+    #######################
+    # Cooldown Management
+    #######################
+    @classmethod
+    def AddCooldown(cls, scriptname, commandname, seconds):
+        cls.cooldowns[scriptname + commandname] = time.time() + seconds
+
+    @classmethod
+    def IsOnCooldown(cls, scriptname, commandname):
+        return time.time() < cls.cooldowns.get(scriptname + commandname, 0)
+
+    @classmethod
+    def GetCooldownDuration(cls, scriptname, commandname):
+        return round((cls.cooldowns.get(scriptname + commandname, 0) - time.time()) * 100) / 100
+
+    @classmethod
+    def AddUserCooldown(cls, scriptname, commandname, user, seconds):
+        if scriptname + commandname not in cls.user_cooldowns:
+            cls.user_cooldowns[scriptname + commandname] = {}
+        cls.user_cooldowns[scriptname + commandname][user] = time.time() + seconds
+
+    @classmethod
+    def IsOnUserCooldown(cls, scriptname, commandname, user):
+        return time.time() < cls.user_cooldowns.get(scriptname + commandname, {}).get(user, 0)
+
+    @classmethod
+    def GetUserCooldownDuration(cls, scriptname, commandname, user):
+        return round((cls.user_cooldowns.get(scriptname + commandname, {}).get(user, 0) - time.time()) * 100) / 100
+
+    #######################
+    # OBS
+    #######################
+
+    #######################
+    # API Requests
+    #######################
     @classmethod
     def GetRequest(cls, url, headers):
         resp = requests.get(url, headers=headers, timeout=1)
@@ -222,10 +245,47 @@ class Parent(object):
             resp = requests.put(url, headers=headers, data=content, timeout=0.5)
         return json.dumps({"status": resp.status_code, "response": resp.text})
 
+    #######################
+    # Stream infos
+    #######################
+    @classmethod
+    def IsLive(cls):
+        return cls.stream_online
+
+    #######################
+    # Miscellaneous
+    #######################
     @classmethod
     def GetRandom(cls, mini, maxi):
         return random.randint(mini, maxi)
 
+    @classmethod
+    def GetStreamingService(cls):
+        return "Mixer"
+
+    @classmethod
+    def GetChannelName(cls):
+        return cls.ChatService.get_channel_name()
+
+    @classmethod
+    def GetCurrencyName(cls):
+        return cls.DataService.currency_name
+
+    @classmethod
+    def Log(cls, script_name, log):
+        print "log from " + script_name + ": " + log
+
+    @classmethod
+    def PlaySound(filepath, volume):
+        raise NotImplementedError
+
+    @classmethod
+    def GetQueue(cls, max):
+        raise NotImplementedError
+
+    #######################
+    # internal workings
+    #######################
     @staticmethod
     def on_message(client, server, message):
         data = json.loads(message)
@@ -235,10 +295,6 @@ class Parent(object):
                     Parent.subscribers[event][client["id"]] = client
                 else:
                     Parent.subscribers[event] = {client["id"]: client}
-
-    @classmethod
-    def GetStreamingService(cls):
-        return "Mixer"
 
     @staticmethod
     def on_client_connect(client, server):
@@ -250,6 +306,9 @@ class Parent(object):
             if client["id"] in Parent.subscribers[event]:
                 del Parent.subscribers[event][client["id"]]
 
+    @classmethod
+    def add_viewer(cls, user_id, user_data):
+        cls.viewer_list[user_id] = user_data
 
 def concat(msg1, msg2):
     return msg1 + msg2["text"]
