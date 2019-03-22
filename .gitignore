@@ -2,7 +2,7 @@
 venv/
 scripts/
 database.db
-*.pyc
+*.py[cod]
 settingsM.json
 settingsT.json
 token.json

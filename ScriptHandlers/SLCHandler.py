@@ -157,15 +157,12 @@ def load_settings(application, _persistent_path, force_reload=False):
         try:
             settings = read_settings()
             script_path = settings['script_path']
-            DataService.currency_name = settings['currency_name']
         except:
             read_success = False
-            application.add_to_queue(application.ask_settings, username={}, client_id={}, client_secret={'show': '*'},
-                                     channel={}, currency_name={})
+            application.add_to_queue(application.ask_settings)
     else:
         read_success = False
-        application.add_to_queue(application.ask_settings, username={}, client_id={}, client_secret={'show': '*'},
-                                 channel={}, currency_name={})
+        application.add_to_queue(application.ask_settings)
     if read_success:
         application.add_to_queue(application.finish_settings)
 
@@ -173,7 +170,6 @@ def load_settings(application, _persistent_path, force_reload=False):
 def store_settings(settings_):
     global settings, script_path
     script_path = settings_.get('script_path', '')
-    DataService.currency_name = settings_['currency_name']
     settings = settings_
     if not os.path.isdir(os.path.join(persistent_path, "PyChatter")):
         os.makedirs(os.path.join(persistent_path, "PyChatter"))
@@ -198,7 +194,7 @@ def start(application):
     # noinspection PyCallingNonCallable
     Parent.ChatService = ChatService(Parent, settings, script_handler)
     # noinspection PyCallingNonCallable
-    Parent.DataService = DataService(Parent)
+    Parent.DataService = DataService(Parent, settings)
     application.add_to_queue(application.show_script_manager)
 
     script_handler.start()

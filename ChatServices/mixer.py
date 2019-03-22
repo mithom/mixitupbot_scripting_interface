@@ -11,28 +11,25 @@ connected = Event()
 
 
 class MixerChat(object):
+    required_settings = {"client_id": {}, "client_secret": {'show': '*'}, "channel": {}}
+
     id_types = {}
 
-    OAuthKey = None
-    config = None
     mixerApi = None
     user_id = None
     channel_id = None
     channel_url = None
-    mixer = None
-    authKey = None
-    roles = []
-    permissions = []
     message_id = None
 
-    def __init__(self, Parent, config, script_handler):
+    def __init__(self, parent, config, script_handler):
         keys = self._auth(config)
         if keys is None:
             raise LookupError
-        self.Parent = Parent
+        self.Parent = parent
         self.script_handler = script_handler
         self.OAuthKey = keys["access_token"]
         self.mixerApi = MixerApi(config, self.OAuthKey)
+        self.config = config
         self.user_id = self.mixerApi.get_user_id()
         self.channel_id = self.mixerApi.get_channel_id()
         self.chat_url, self.authKey, self.roles, self.permissions = self.mixerApi.get_chat(self.channel_id)
@@ -62,10 +59,10 @@ class MixerChat(object):
             i %= 100000
             yield i
 
-    def close(self, mixer):
+    def close(self, _mixer):
         print('closed')
 
-    def error(self, mixer, err):
+    def error(self, _mixer, err):
         print('error')
         print(err)
 
@@ -73,7 +70,7 @@ class MixerChat(object):
     def connect(self, mixer):
         mixer.send(json.dumps(self.auth()))
 
-    def on_message(self, mixer, message):
+    def on_message(self, _mixer, message):
         data = json.loads(message)
         type_ = data["type"]
         if type_ == 'reply':
@@ -106,11 +103,10 @@ class MixerChat(object):
         self.mixer.send(test)
         print 'send whisper', username, message
 
-    @classmethod
     def get_channel_name(self):
         return self.config["channel"]
 
-    def handle_reply(self, data, message):
+    def handle_reply(self, data, _message):
         if self.id_types[data["id"]] == "auth":
             if data.get("error", None) is not None:
                 msg = "please authorize the correct user, you probably authorized you main account instead of your " \

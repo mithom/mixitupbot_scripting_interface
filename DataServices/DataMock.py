@@ -5,7 +5,9 @@ from ChatServices.ChatMock import ChatMock as ChatService
 
 # noinspection PyUnusedLocal,PyMethodMayBeStatic
 class DataService(object):
-    def __init__(self, parent):
+    required_settings = {}
+
+    def __init__(self, parent, _config):
         self.Parent = parent
         self.currency_name = 'Points'
 

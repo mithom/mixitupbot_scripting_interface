@@ -11,6 +11,8 @@ ChatService = None
 
 script_name = None  # type: str
 folder = None  # type: str
+settings = None  # type: dict
+
 
 class ScriptHandler(object):
     Data = Data
@@ -34,16 +36,18 @@ class ScriptHandler(object):
         self.script.Tick()
         self.script.Execute(data)
 
+
 def start(application):
-    global folder
+    global folder, settings
+    settings['persistent_path'] = persistent_path
     have_settings.wait()
     application.add_to_queue(application.show_script_manager)
     script_handler = ScriptHandler(application, folder)
     # noinspection PyCallingNonCallable
-    Parent.ChatService = ChatService(Parent, {'persistent_path': persistent_path}, script_handler)
+    Parent.ChatService = ChatService(Parent, settings, script_handler)
     Parent.stream_online = True
     # noinspection PyCallingNonCallable
-    Parent.DataService = DataService(Parent)
+    Parent.DataService = DataService(Parent, settings)
 
     Parent.ChatService.start()
 
@@ -52,7 +56,7 @@ def load_script_settings():
     return Tk.Button(text='test')  # created at root lvl
 
 
-def save_script_settings(settings_frame):
+def save_script_settings(_settings_frame):
     pass
 
 
@@ -66,8 +70,9 @@ def load_settings(application, _persistent_path, **_):
     application.add_to_queue(application.ask_settings, script_name={})
 
 
-def store_settings(settings):
-    global script_name, folder
-    script_name = settings['script_name']
-    folder = settings.get('script_path', '')
+def store_settings(_settings):
+    global script_name, folder, settings
+    settings = _settings
+    script_name = _settings['script_name']
+    folder = _settings.get('script_path', '')
     have_settings.set()

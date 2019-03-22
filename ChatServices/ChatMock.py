@@ -2,7 +2,10 @@ import json
 import traceback
 
 
+# noinspection PyMethodMayBeStatic
 class ChatMock(object):
+    required_settings = {}
+
     def __init__(self, parent, config, script_handler):
         self.config = config
         self.Parent = parent

@@ -6,12 +6,13 @@ from ChatServices.mixer import MixerChat as ChatService
 # noinspection PyUnusedLocal
 class DataService(object):
     mixitupbot = "http://localhost:8911/api"
-    currency_name = None  # type: str
+    required_settings = {"username": {}, "currency_name": {}}
 
-    def __init__(self, parent):
+    def __init__(self, parent, config):
         self.currency_id = None
         self.channel_id = parent.ChatService.channel_id
         self.Parent = parent
+        self.currency_name = config["currency_name"]
 
     class MIUException(Exception):
         def __init__(self, address, function_name):

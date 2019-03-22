@@ -19,13 +19,14 @@ import os
 STORE_SETTINGS = 'store_settings'
 persistent_path = os.getenv('localappdata')
 
+
 # TODO: ability to add multiple botMocks - allow firebot through: https://github.com/stefano/pyduktape
 # firebot interface https://github.com/crowbartools/Firebot/wiki/Writing-Custom-Scripts
 # TODO: important issue about multiple threads starting scripts when cancelling and retrying
 # noinspection PyAttributeOutsideInit
 class StartUpApplication(Tk.Frame):
     services = {'StreamLabs Chatbot': SLCHandler, 'SLC Mock': SLCMockHandler, 'Firebot': FirebotHandler}
-    dataSources = {'MixItUp app':MIUapp, 'DataMock':DataMock}
+    dataSources = {'MixItUp app': MIUapp, 'DataMock': DataMock}
 
     class AskSettings(Tk.Frame):
         def get_folder(self):
@@ -69,7 +70,8 @@ class StartUpApplication(Tk.Frame):
             self.serviceSelection.pack(pady=(20, 40), side=Tk.LEFT)
             self.selectedDataSource = Tk.StringVar(self)
             self.selectedDataSource.set('MixItUp app')
-            self.dataSourceSelection = Tk.OptionMenu(self, self.selectedDataSource, *StartUpApplication.dataSources.keys())
+            self.dataSourceSelection = Tk.OptionMenu(self, self.selectedDataSource,
+                                                     *StartUpApplication.dataSources.keys())
             self.dataSourceSelection.pack(pady=(20, 40), side=Tk.LEFT)
 
     class ScriptManager(Tk.Frame):
@@ -119,7 +121,8 @@ class StartUpApplication(Tk.Frame):
                 func = application.service.save_script_settings
                 args = (self.settings_frame,)
                 # noinspection PyTypeChecker
-                fun_thread = threading.Thread(target=func, name=application.service.__name__+'.save_script_settings', args=args)
+                fun_thread = threading.Thread(target=func, name=application.service.__name__ + '.save_script_settings',
+                                              args=args)
                 fun_thread.start()
                 application.threads.append(fun_thread)
 
@@ -151,16 +154,16 @@ class StartUpApplication(Tk.Frame):
                     label.bind('<Leave>', self.default_row)
                     label.bind('<Button-1>', self.open_settings_func(master.master))
 
-            def highlight_row(self, event):
+            def highlight_row(self, _event):
                 for label in self.labels:
                     label.config(bg="grey")
 
-            def default_row(self, event):
+            def default_row(self, _event):
                 for label in self.labels:
                     label.config(bg="lightgrey")
 
             def open_settings_func(self, master):
-                def open_settings(event):
+                def open_settings(_event):
                     master.master.SettingsPanel.select_script(master.master, self.script)
 
                 return open_settings
@@ -226,7 +229,6 @@ class StartUpApplication(Tk.Frame):
         self.previousButton = Tk.Button(self, text='Previous')
         self.quitButton = Tk.Button(self, text='Close', command=self.quit, anchor=Tk.SE)
 
-        # TODO: change to place to stick to bottom right corner
         self.quitButton.grid(row=3, column=3, padx=5, pady=5, sticky=Tk.SE)
         self.previousButton.grid(row=3, column=2, padx=5, pady=5, sticky=Tk.SE)
         self.continueButton.grid(row=3, column=1, padx=5, pady=5, sticky=Tk.SE)
@@ -274,13 +276,14 @@ class StartUpApplication(Tk.Frame):
         self.continueButton.configure(state=Tk.DISABLED)
         if isinstance(self._frame, self.ServiceSelection):
             self.service = self.services[self._frame.selectedService.get()]
-            dataModule = self.dataSources[self._frame.selectedDataSource.get()]
-            self.service.ChatService = dataModule.ChatService
-            self.service.DataService = dataModule.DataService
+            data_module = self.dataSources[self._frame.selectedDataSource.get()]
+            self.service.ChatService = data_module.ChatService
+            self.service.DataService = data_module.DataService
         func = self.service.load_settings
         kwargs = {'force_reload': force_reload}
         # noinspection PyTypeChecker
-        fun_thread = threading.Thread(target=func, name=self.service.__name__, args=(self, persistent_path), kwargs=kwargs)
+        fun_thread = threading.Thread(target=func, name=self.service.__name__,
+                                      args=(self, persistent_path), kwargs=kwargs)
         self.threads.append(fun_thread)
         self.previousButton.configure(state=Tk.ACTIVE, command=self.select_service, text='Cancel')
         self.switch_frame(self.ProgressBar, 'Verifying Authentication Settings')
@@ -294,10 +297,11 @@ class StartUpApplication(Tk.Frame):
             self.config_service(force_reload=True)
 
     def ask_settings(self, **kwargs):
-        # TODO:ask settings from different modules instead of handler defining them all.
         if not isinstance(self._frame, self.ProgressBar):
             raise RuntimeError('ask_settings was called, but _frame was not ProgressBar')
         self.last_kwargs = kwargs
+        kwargs.update(self.service.ChatService.required_settings)
+        kwargs.update(self.service.DataService.required_settings)
         self.switch_frame(self.AskSettings, **kwargs)
         self.continueButton.config(state=Tk.ACTIVE, command=self.confirm_settings)
         self.previousButton.configure(state=Tk.ACTIVE, command=self.select_service, text='Previous')

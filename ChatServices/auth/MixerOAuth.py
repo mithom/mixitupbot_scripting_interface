@@ -16,7 +16,7 @@ class MixerOAuth(object):
 
     def __new__(cls, *args, **kwargs):
         if cls.instance is None:
-            obj = object.__new__(cls, *args, **kwargs)
+            obj = object.__new__(cls)
             cls.instance = obj
         return cls.instance
 
@@ -30,7 +30,6 @@ class MixerOAuth(object):
         self.stopped = Event()
         self.instance = self
 
-
     @staticmethod
     @app.route("/")
     def demo():
@@ -39,17 +38,19 @@ class MixerOAuth(object):
                  "chat:bypass_links", "chat:change_ban", "chat:change_role", "chat:clear_messages",
                  "chat:giveaway_start", "chat:poll_start", "chat:poll_vote", "chat:purge",
                  "chat:timeout", "chat:view_deleted", "chat:whisper", "resource:find:self"]
-        mixer = OAuth2Session(MixerOAuth.instance.config["client_id"], redirect_uri='https://127.0.0.1:5555/callback', scope=scope)
+        mixer = OAuth2Session(MixerOAuth.instance.config["client_id"], redirect_uri='https://127.0.0.1:5555/callback',
+                              scope=scope)
         auth_url, state = mixer.authorization_url(MixerOAuth.authorization_base_url)
         return redirect(auth_url)
-
 
     @staticmethod
     @app.route("/callback", methods=["GET"])
     def callback():
         global token, state
-        mixer = OAuth2Session(MixerOAuth.instance.config["client_id"], state=state, redirect_uri='https://127.0.0.1:5555/callback')
-        token = mixer.fetch_token(MixerOAuth.instance.token_url, client_secret=MixerOAuth.instance.config["client_secret"],
+        mixer = OAuth2Session(MixerOAuth.instance.config["client_id"], state=state,
+                              redirect_uri='https://127.0.0.1:5555/callback')
+        token = mixer.fetch_token(MixerOAuth.instance.token_url,
+                                  client_secret=MixerOAuth.instance.config["client_secret"],
                                   authorization_response=request.url, verify=False)
         MixerOAuth.instance.shutdown_server()
         return "you can now close this window"
