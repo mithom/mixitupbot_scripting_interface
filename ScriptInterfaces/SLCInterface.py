@@ -6,6 +6,7 @@ import random
 import sounddevice as sd
 import soundfile as sf
 import Queue
+import dotnet  # makes clr available for scripts
 
 
 # noinspection PyPep8Naming,PyUnusedLocal
@@ -136,7 +137,7 @@ class Parent(object):
 
     @classmethod
     def GetPointsAll(cls, users):
-        # FIXME: from System.Collections.Generic import List
+        users = list(users)
         if hasattr(cls.DataService, 'get_points_all'):
             return cls.DataService.get_points_all(users)
         else:
@@ -144,12 +145,12 @@ class Parent(object):
 
     @classmethod
     def GetRanksAll(cls, users):
-        # FIXME: from System.Collections.Generic import List
+        users = list(users)
         raise NotImplementedError
 
     @classmethod
     def GetHoursAll(cls, users):
-        # FIXME: from System.Collections.Generic import List
+        users = list(users)
         if hasattr(cls.DataService, 'get_hours_all'):
             return cls.DataService.get_hours_all(users)
         else:
@@ -157,7 +158,7 @@ class Parent(object):
 
     @classmethod
     def GetCurrencyUsers(cls, users):
-        # FIXME: from System.Collections.Generic import List
+        users = list(users)
         raise NotImplementedError
 
     #######################
@@ -189,7 +190,7 @@ class Parent(object):
     def GetViewerList(cls):
         return [user_data["username"] for user_data in cls.viewer_list.itervalues()]
 
-    # TODO: differentiate from GetViewerList, databse with user activity
+    # TODO: differentiate from GetViewerList, database with user activity
     @classmethod
     def GetActiveUsers(cls):  # TODO: filter active
         return [user_data["username"] for user_data in cls.viewer_list.itervalues()]
@@ -210,7 +211,7 @@ class Parent(object):
 
     @classmethod
     def GetDisplayNames(cls, user_ids):
-        # FIXME: from System.Collections.Generic import List
+        user_ids = list(user_ids)
         return [cls.viewer_list[user_id]["username"] for user_id in user_ids]
 
     #######################

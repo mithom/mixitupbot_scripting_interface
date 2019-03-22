@@ -12,7 +12,6 @@ from ScriptInterfaces.SLCInterface import Parent, Data
 import time
 import json
 
-
 ChatService = None
 DataService = None
 

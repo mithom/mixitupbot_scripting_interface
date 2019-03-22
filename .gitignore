@@ -1,9 +1,6 @@
 .idea/
 venv/
-scripts/
-database.db
 *.py[cod]
-settingsM.json
-settingsT.json
-token.json
+data/settingsM.json
+data/settingsT.json
 build/
