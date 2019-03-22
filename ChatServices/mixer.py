@@ -15,14 +15,8 @@ class MixerChat(object):
 
     id_types = {}
 
-    mixerApi = None
-    user_id = None
-    channel_id = None
-    channel_url = None
-    message_id = None
-
     def __init__(self, parent, config, script_handler):
-        keys = self._auth(config)
+        keys = self._auth()
         if keys is None:
             raise LookupError
         self.Parent = parent
@@ -41,15 +35,15 @@ class MixerChat(object):
         self.mixer.on_error = self.error
         self.message_id = self.message_id_gen()
 
-    def _auth(self, config):
+    def _auth(self):
         cert = os.path.join(os.path.dirname(__file__), '..', 'data', 'script_interface.crt')
         key = os.path.join(os.path.dirname(__file__), '..', 'data', 'script_interface.key')
-        token_file = os.path.join(config['persistent_path'], "PyChatter", "token.json")
-        moauth = MixerOAuth(config, cert, key, token_file)
-        if not moauth.start():
+        token_file = os.path.join(self.config['persistent_path'], "PyChatter", "token.json")
+        m_oauth = MixerOAuth(self.config, cert, key, token_file)
+        if not m_oauth.start():
             url = "https://127.0.0.1:5555/"
             webbrowser.open(url, new=1, autoraise=True)
-        return moauth.stop()
+        return m_oauth.stop()
 
     @staticmethod
     def message_id_gen():
@@ -60,10 +54,10 @@ class MixerChat(object):
             yield i
 
     def close(self, _mixer):
-        print('closed')
+        print('mixerchat closed')
 
     def error(self, _mixer, err):
-        print('error')
+        print('mixerchat websocket error')
         print(err)
 
     # authenticate
