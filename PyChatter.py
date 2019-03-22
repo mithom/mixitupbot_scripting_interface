@@ -7,22 +7,25 @@ This file will be the running program. It will start up in several steps:
 5. start the bot.
 """
 import Tkinter as Tk
-import mxpy
-import twpy
-import mock
+from ScriptHandlers import SLCHandler, SLCMockHandler, FirebotHandler
+from DataServices import DataMock, MIUapp
 import threading
 import ttk
 from Queue import Queue
 import tkFont
 import tkFileDialog
+import os
 
 STORE_SETTINGS = 'store_settings'
+persistent_path = os.getenv('localappdata')
 
-
-#  TODO: important issue about multiple threads starting scripts when cancelling and retrying
+# TODO: ability to add multiple botMocks - allow firebot through: https://github.com/stefano/pyduktape
+# firebot interface https://github.com/crowbartools/Firebot/wiki/Writing-Custom-Scripts
+# TODO: important issue about multiple threads starting scripts when cancelling and retrying
 # noinspection PyAttributeOutsideInit
 class StartUpApplication(Tk.Frame):
-    services = {'Mixer': mxpy, 'Twitch': twpy, 'ChatMock': mock}
+    services = {'StreamLabs Chatbot': SLCHandler, 'SLC Mock': SLCMockHandler, 'Firebot': FirebotHandler}
+    dataSources = {'MixItUp app':MIUapp, 'DataMock':DataMock}
 
     class AskSettings(Tk.Frame):
         def get_folder(self):
@@ -59,11 +62,15 @@ class StartUpApplication(Tk.Frame):
     class ServiceSelection(Tk.Frame):
         def __init__(self, master):
             Tk.Frame.__init__(self, master)
-            self.title = 'Select Streaming Service'
+            self.title = 'Select Scripting Service & Data Source'
             self.selectedService = Tk.StringVar(self)
-            self.selectedService.set('Mixer')
+            self.selectedService.set('StreamLabs Chatbot')
             self.serviceSelection = Tk.OptionMenu(self, self.selectedService, *StartUpApplication.services.keys())
-            self.serviceSelection.pack(pady=(20, 40))
+            self.serviceSelection.pack(pady=(20, 40), side=Tk.LEFT)
+            self.selectedDataSource = Tk.StringVar(self)
+            self.selectedDataSource.set('MixItUp app')
+            self.dataSourceSelection = Tk.OptionMenu(self, self.selectedDataSource, *StartUpApplication.dataSources.keys())
+            self.dataSourceSelection.pack(pady=(20, 40), side=Tk.LEFT)
 
     class ScriptManager(Tk.Frame):
         def __init__(self, master):
@@ -113,6 +120,7 @@ class StartUpApplication(Tk.Frame):
                 args = (self.settings_frame,)
                 # noinspection PyTypeChecker
                 fun_thread = threading.Thread(target=func, name=application.service.__name__+'.save_script_settings', args=args)
+                fun_thread.start()
                 application.threads.append(fun_thread)
 
             def close_panel(self):
@@ -266,10 +274,13 @@ class StartUpApplication(Tk.Frame):
         self.continueButton.configure(state=Tk.DISABLED)
         if isinstance(self._frame, self.ServiceSelection):
             self.service = self.services[self._frame.selectedService.get()]
+            dataModule = self.dataSources[self._frame.selectedDataSource.get()]
+            self.service.ChatService = dataModule.ChatService
+            self.service.DataService = dataModule.DataService
         func = self.service.load_settings
         kwargs = {'force_reload': force_reload}
         # noinspection PyTypeChecker
-        fun_thread = threading.Thread(target=func, name=self.service.__name__, args=(self,), kwargs=kwargs)
+        fun_thread = threading.Thread(target=func, name=self.service.__name__, args=(self, persistent_path), kwargs=kwargs)
         self.threads.append(fun_thread)
         self.previousButton.configure(state=Tk.ACTIVE, command=self.select_service, text='Cancel')
         self.switch_frame(self.ProgressBar, 'Verifying Authentication Settings')
@@ -283,6 +294,7 @@ class StartUpApplication(Tk.Frame):
             self.config_service(force_reload=True)
 
     def ask_settings(self, **kwargs):
+        # TODO:ask settings from different modules instead of handler defining them all.
         if not isinstance(self._frame, self.ProgressBar):
             raise RuntimeError('ask_settings was called, but _frame was not ProgressBar')
         self.last_kwargs = kwargs

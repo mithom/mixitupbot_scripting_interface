@@ -1,7 +1,7 @@
 import time
 import requests
 import json
-from threading import Thread, Event
+from threading import Thread
 import random
 import sounddevice as sd
 import soundfile as sf
@@ -308,35 +308,36 @@ class Parent(object):
 
     @classmethod
     def PlaySound(cls, filepath, volume):
-        blocksize = 20
+        block_size = 20
         q = Queue.Queue(maxsize=2048)
         f = sf.SoundFile(filepath).__enter__()
 
-        def sound_callback(outdata, frames, time, status):
-            data = q.get_nowait()
-            if len(data) < len(outdata):
-                outdata[:len(data)] = data
-                outdata[len(data):] = b'\x00' * (len(outdata) - len(data))
+        def sound_callback(outdata, frames, _time, status):
+            _data = q.get_nowait()
+            if len(_data) < len(outdata):
+                outdata[:len(_data)] = _data
+                outdata[len(_data):] = b'\x00' * (len(outdata) - len(_data))
                 f.__exit__()
                 raise sd.CallbackStop
             else:
-                outdata[:] = data
+                outdata[:] = _data
 
         data = None
         for _ in range(2048):
-            data = f.buffer_read(blocksize, dtype='float32')
+            data = f.buffer_read(block_size, dtype='float32')
             if not data:
                 break
             q.put_nowait(data)  # Pre-fill queue
-        stream = sd.RawOutputStream(samplerate=f.samplerate, blocksize=blocksize, dtype='float32',
+        stream = sd.RawOutputStream(samplerate=f.samplerate, blocksize=block_size, dtype='float32',
                                     callback=sound_callback, channels=f.channels)
+
         def read_sound_to_stream():
-            data=True
+            _data = True
             with stream:
-                timeout = blocksize * 2048.0 / f.samplerate
-                while data:
-                    data = f.buffer_read(blocksize, dtype='float32')
-                    q.put(data, timeout=timeout)
+                timeout = block_size * 2048.0 / f.samplerate
+                while _data:
+                    _data = f.buffer_read(block_size, dtype='float32')
+                    q.put(_data, timeout=timeout)
 
         thread = Thread(target=read_sound_to_stream)
         thread.daemon = True
@@ -372,6 +373,7 @@ class Parent(object):
     @classmethod
     def add_viewer(cls, user_id, user_data):
         cls.viewer_list[user_id] = user_data
+
 
 def concat(msg1, msg2):
     return msg1 + msg2["text"]
@@ -416,6 +418,7 @@ class Data(object):
         return self.Message.split()[index]
 
 
+# noinspection PyPep8Naming
 class Currency(object):  # this should be read only!
     def __init__(self, userid, username, points, minutes_watched, rank):
         self.__UserId = userid

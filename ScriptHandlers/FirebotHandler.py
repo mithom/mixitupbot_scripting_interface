@@ -1,0 +1,1 @@
+from ScriptInterfaces import FirebotInterface
