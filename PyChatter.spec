@@ -5,9 +5,9 @@ block_cipher = None
 
 a = Analysis(['PyChatter.py'],
              pathex=['C:\\Users\\AIR41604\\Desktop\\Thomas Michiels\\mixitupbot_scripting_interface'],
-             binaries=[],
-             datas=[('.\\venv\\Lib\\site-packages\\_sounddevice_data\\portaudio-binaries\\libportaudio64bit.dll', '\\_sounddevice_data\\portaudio-binaries'), ('.\\venv\\Lib\\site-packages\\_soundfile_data\\libsndfile64bit.dll', '_soundfile_data'), ('clr.py', '.'), ('README.md', '.'), ('data/script_interface.key', 'data'), ('data/script_interface.crt', 'data')],
-             hiddenimports=['sqlite3'],
+             binaries=[('.\\venv\\Lib\\site-packages\\_sounddevice_data\\portaudio-binaries\\libportaudio64bit.dll', '.\\_sounddevice_data\\portaudio-binaries'), ('.\\venv\\Lib\\site-packages\\_soundfile_data\\libsndfile64bit.dll', '_soundfile_data')],
+             datas=[('clr.py', '.'), ('README.md', '.'), ('data/script_interface.key', 'data'), ('data/script_interface.crt', 'data')],
+             hiddenimports=['sqlite3', 'dotnet'],
              hookspath=[],
              runtime_hooks=[],
              excludes=[],

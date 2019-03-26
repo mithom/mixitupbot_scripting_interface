@@ -6,8 +6,6 @@ import random
 import sounddevice as sd
 import soundfile as sf
 import Queue
-import dotnet  # makes clr available for scripts
-
 
 # noinspection PyPep8Naming,PyUnusedLocal
 class Parent(object):
