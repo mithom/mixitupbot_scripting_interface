@@ -16,14 +16,14 @@ class MixerChat(object):
     id_types = {}
 
     def __init__(self, parent, config, script_handler):
+        self.Parent = parent
+        self.script_handler = script_handler
+        self.config = config
         keys = self._auth()
         if keys is None:
             raise LookupError
-        self.Parent = parent
-        self.script_handler = script_handler
         self.OAuthKey = keys["access_token"]
         self.mixerApi = MixerApi(config, self.OAuthKey)
-        self.config = config
         self.user_id = self.mixerApi.get_user_id()
         self.channel_id = self.mixerApi.get_channel_id()
         self.chat_url, self.authKey, self.roles, self.permissions = self.mixerApi.get_chat(self.channel_id)
