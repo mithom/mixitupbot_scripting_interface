@@ -16,7 +16,6 @@ settings = None  # type: dict
 
 class ScriptHandler(object):
     Data = Data
-    stopped = Event()
 
     def __init__(self, application, script_path):
         global script_name
@@ -41,15 +40,16 @@ def start(application):
     global folder, settings
     settings['persistent_path'] = persistent_path
     have_settings.wait()
-    application.add_to_queue(application.show_script_manager)
     script_handler = ScriptHandler(application, folder)
     # noinspection PyCallingNonCallable
     Parent.ChatService = ChatService(Parent, settings, script_handler)
-    Parent.stream_online = True
-    # noinspection PyCallingNonCallable
-    Parent.DataService = DataService(Parent, settings)
+    if Parent.ChatService.auth():
+        Parent.stream_online = True
+        application.add_to_queue(application.show_script_manager)
+        # noinspection PyCallingNonCallable
+        Parent.DataService = DataService(Parent, settings)
 
-    Parent.ChatService.start()
+        Parent.ChatService.start()
 
 
 def load_script_settings():
@@ -61,7 +61,7 @@ def save_script_settings(_settings_frame):
 
 
 def shutdown():
-    ScriptHandler.stopped.set()
+    Parent.ChatService.shutdown()
 
 
 def load_settings(application, _persistent_path, **_):

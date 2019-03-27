@@ -19,11 +19,21 @@ class MixerChat(object):
         self.Parent = parent
         self.script_handler = script_handler
         self.config = config
+        self.message_id = self.message_id_gen()
+        self.m_oauth = None  # type: MixerOAuth
+        self.mixer = None  # type: websocket.WebSocketApp
+        self.channel_id = None
+        self.chat_url = None
+        self.authKey = None
+        self.roles = None
+        self.permissions = None
+
+    def auth(self):
         keys = self._auth()
         if keys is None:
-            raise LookupError
+            return False
         self.OAuthKey = keys["access_token"]
-        self.mixerApi = MixerApi(config, self.OAuthKey)
+        self.mixerApi = MixerApi(self.config, self.OAuthKey)
         self.user_id = self.mixerApi.get_user_id()
         self.channel_id = self.mixerApi.get_channel_id()
         self.chat_url, self.authKey, self.roles, self.permissions = self.mixerApi.get_chat(self.channel_id)
@@ -33,17 +43,17 @@ class MixerChat(object):
         self.mixer.on_open = self.connect
         self.mixer.on_close = self.close
         self.mixer.on_error = self.error
-        self.message_id = self.message_id_gen()
+        return True
 
     def _auth(self):
         cert = os.path.join(os.path.dirname(__file__), '..', 'data', 'script_interface.crt')
         key = os.path.join(os.path.dirname(__file__), '..', 'data', 'script_interface.key')
         token_file = os.path.join(self.config['persistent_path'], "PyChatter", "token.json")
-        m_oauth = MixerOAuth(self.config, cert, key, token_file)
-        if not m_oauth.start():
+        self.m_oauth = MixerOAuth(self.config, cert, key, token_file)
+        if not self.m_oauth.start():
             url = "https://127.0.0.1:5555/"
             webbrowser.open(url, new=1, autoraise=True)
-        return m_oauth.stop()
+        return self.m_oauth.stop()
 
     @staticmethod
     def message_id_gen():
@@ -62,7 +72,7 @@ class MixerChat(object):
 
     # authenticate
     def connect(self, mixer):
-        mixer.send(json.dumps(self.auth()))
+        mixer.send(json.dumps(self.auth_chat()))
 
     def on_message(self, _mixer, message):
         data = json.loads(message)
@@ -76,7 +86,13 @@ class MixerChat(object):
         self.mixer.run_forever()
         print('never reach this')
 
-    def auth(self):
+    def shutdown(self):
+        if self.m_oauth is not None:
+            self.m_oauth.stop_if_running()
+        if self.mixer is not None:
+            self.mixer.close()
+
+    def auth_chat(self):
         return self.create_method("auth", self.channel_id, self.user_id, self.authKey)
 
     def create_method(self, method, *args):

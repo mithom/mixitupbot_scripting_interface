@@ -15,6 +15,8 @@ import json
 ChatService = None
 DataService = None
 
+script_handler = None  # type: ScriptHandler
+
 
 class ScriptHandler(object):
     Data = Data
@@ -102,8 +104,6 @@ class ScriptHandler(object):
                     script.Unload()
                 except AttributeError:
                     pass
-        if ChatService.mixer is not None:
-            ChatService.mixer.close()
 
     def scripts_loop(self):
         self.init()
@@ -185,6 +185,7 @@ def read_settings():
 
 
 def start(application):
+    global script_handler
     for thread in application.threads:
         if thread.name == 'store_settings':
             thread.join()
@@ -192,16 +193,22 @@ def start(application):
     script_handler = ScriptHandler(application, script_path)
     # noinspection PyCallingNonCallable
     Parent.ChatService = ChatService(Parent, settings, script_handler)
-    # noinspection PyCallingNonCallable
-    Parent.DataService = DataService(Parent, settings)
-    application.add_to_queue(application.show_script_manager)
+    if Parent.ChatService.auth():
+        # noinspection PyCallingNonCallable
+        Parent.DataService = DataService(Parent, settings)
+        application.add_to_queue(application.show_script_manager)
 
-    script_handler.start()
-    Parent.ChatService.start()
+        script_handler.start()
+        Parent.ChatService.start()
+    else:
+        application.add_to_queue(application.back_to_settings_config)
 
 
 def shutdown():
-    pass
+    if script_handler is not None:
+        script_handler.unload()
+    if Parent.ChatService is not None:
+        Parent.ChatService.shutdown()
 
 
 file_path = os.path.dirname(__file__)
