@@ -8,6 +8,9 @@ import requests
 
 app = Flask(__name__)
 
+token = None
+server = None
+
 
 class MixerOAuth(object):
     authorization_base_url = 'https://mixer.com/oauth/authorize'
