@@ -1,6 +1,7 @@
 from ScriptInterfaces.SLCInterface import Parent, Data
 import importlib
 import sys
+import os
 from threading import Event
 import Tkinter as Tk
 
@@ -20,20 +21,23 @@ class ScriptHandler(object):
     def __init__(self, application, script_path):
         global script_name
         sys.path.append(script_path)
+        if script_name is None or len(script_name) == 0:
+            script_name = os.path.split(script_path)[-1]
         if not script_name.endswith("_StreamlabsSystem"):
             script_name += "_StreamlabsSystem"
 
         self.script = importlib.import_module(script_name)
         self.script.Parent = Parent
 
+    def add_data_to_process(self, data):
+        self.script.Tick()
+        self.script.Execute(data)
+
+    def start(self, application):
         self.script.Init()
         application.add_to_queue(application.add_loaded_script, application.ScriptManager.Script(
             self.script, load_script_settings(), ['Version', 'Creator', 'Description']
         ))
-
-    def add_data_to_process(self, data):
-        self.script.Tick()
-        self.script.Execute(data)
 
 
 def start(application):
@@ -48,7 +52,7 @@ def start(application):
         application.add_to_queue(application.show_script_manager)
         # noinspection PyCallingNonCallable
         Parent.DataService = DataService(Parent, settings)
-
+        script_handler.start(application)
         Parent.ChatService.start()
 
 

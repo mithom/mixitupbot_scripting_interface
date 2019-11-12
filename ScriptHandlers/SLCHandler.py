@@ -155,7 +155,10 @@ def load_settings(application, _persistent_path, force_reload=False):
     if not force_reload:
         try:
             settings = read_settings()
-            script_path = settings['script_path']
+            if (ChatService.required_settings.keys() + DataService.required_settings.keys()) in settings.keys():
+                script_path = settings['script_path']
+            else:
+                application.add_to_queue(application.ask_settings)
         except:
             read_success = False
             application.add_to_queue(application.ask_settings)
@@ -205,6 +208,7 @@ def start(application):
 
 
 def shutdown():
+    # TODO: nog altijd niet volledig in orde (datamock met SLCHandler stopt niet)
     if script_handler is not None:
         script_handler.unload()
     if Parent.ChatService is not None:
