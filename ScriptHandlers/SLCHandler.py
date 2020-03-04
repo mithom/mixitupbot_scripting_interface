@@ -155,7 +155,8 @@ def load_settings(application, _persistent_path, force_reload=False):
     if not force_reload:
         try:
             settings = read_settings()
-            if (ChatService.required_settings.keys() + DataService.required_settings.keys()) in settings.keys():
+            required_keys = (ChatService.required_settings.keys() + DataService.required_settings.keys())
+            if all(required_key in settings.keys() for required_key in required_keys):
                 script_path = settings['script_path']
             else:
                 application.add_to_queue(application.ask_settings)
